@@ -520,15 +520,21 @@ U_ID: ${uId.substring(0, 30)}...
       return `❌ Не удалось получить цену из стакана для ${apiSymbol}`;
     }
     
-    const pnlInfo = await getPositionPnLForSymbol(userId, symbol);
-    
+    // Execute close order FIRST
     const result = await executeToolDirect(closeShortAtPriceTool, {
       telegramUserId: userId,
       symbol,
       price: secondAskPrice,
       size,
     });
-    return `✅ *SHORT закрывается по 2nd ask ${secondAskPrice}*${pnlInfo}\n\n${result}`;
+    
+    // Wait a moment for order to execute
+    await new Promise(resolve => setTimeout(resolve, 500));
+    
+    // Get PnL AFTER closing
+    const pnlInfo = await getPositionPnLForSymbol(userId, symbol);
+    
+    return `✅ *SHORT закрыта по 2nd ask ${secondAskPrice}*${pnlInfo}\n\n${result}`;
   }
   
   // Close position
