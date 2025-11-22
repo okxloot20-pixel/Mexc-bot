@@ -33,33 +33,32 @@ async function getSymbolLimit(symbol: string, logger?: any): Promise<number> {
       return limit.maxContracts;
     }
     
-    // If not in DB, fetch from MEXC API
+    // If not in DB, fetch from MEXC API - get all contracts and find the one we need
     logger?.info(`🔍 Symbol ${symbol} not in DB, fetching from MEXC API...`);
-    const response = await fetch(`https://contract.mexc.com/api/v1/contract/detail?symbol=${symbol}`);
+    const response = await fetch('https://contract.mexc.com/api/v1/contract/detail');
     const data = await response.json();
     
-    if (data.success && data.data) {
-      // Try different property names for max position
-      const maxPos = data.data.maxPosition 
-        || data.data.maxOpenCount 
-        || data.data.positionOpenLimit 
-        || 100;
+    if (data.success && Array.isArray(data.data)) {
+      // Find the contract matching our symbol
+      const contract = data.data.find((c: any) => c.symbol === symbol);
       
-      const maxContracts = parseInt(maxPos) || 100;
-      
-      // Cache it in DB for future use
-      try {
-        await db.insert(symbolLimits).values({
-          symbol,
-          maxContracts,
-        }).onConflictDoNothing();
-        logger?.info(`💾 Cached ${symbol} limit ${maxContracts} to DB`);
-      } catch (e) {
-        logger?.warn(`⚠️ Could not cache to DB`, { error: (e as any).message });
+      if (contract && contract.maxVol) {
+        const maxContracts = parseInt(contract.maxVol) || 100;
+        
+        // Cache it in DB for future use
+        try {
+          await db.insert(symbolLimits).values({
+            symbol,
+            maxContracts,
+          }).onConflictDoNothing();
+          logger?.info(`💾 Cached ${symbol} limit ${maxContracts} to DB`);
+        } catch (e) {
+          logger?.warn(`⚠️ Could not cache to DB`, { error: (e as any).message });
+        }
+        
+        logger?.info(`📊 Symbol ${symbol} max contracts (from MEXC): ${maxContracts}`);
+        return maxContracts;
       }
-      
-      logger?.info(`📊 Symbol ${symbol} max contracts (from MEXC): ${maxContracts}`);
-      return maxContracts;
     }
     
     logger?.warn(`⚠️ Could not fetch ${symbol} from MEXC API, using default 100`);
