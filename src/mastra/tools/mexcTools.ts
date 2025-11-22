@@ -278,17 +278,30 @@ export const openLongLimitTool = createTool({
       for (const account of accounts) {
         try {
           const client = createMexcClient(account.uId);
+          const tradeLeverage = context.leverage || account.defaultLeverage || 20;
+          
+          // Get size: use custom size, or symbol limit as maximum
+          let tradeSize = context.size;
+          if (!tradeSize) {
+            const symbolMax = await getSymbolLimit(symbol, logger);
+            tradeSize = symbolMax; // Open at maximum allowed for this symbol
+            logger?.info(`💡 Opening limit at max allowed size`, { tradeSize, symbolMax });
+          }
+          
+          logger?.info(`📍 Submitting limit order`, { symbol, price: context.price, size: tradeSize, leverage: tradeLeverage });
+          
           await client.submitOrder({
             symbol,
             side: 1,
-            vol: context.size || account.defaultSize || 10,
+            vol: tradeSize,
             type: 1,
             price: context.price,
-            leverage: context.leverage || account.defaultLeverage || 20,
+            leverage: tradeLeverage,
             openType: 2,
           });
-          results.push(`✅ Аккаунт ${account.accountNumber}: LONG лимит ${context.price}`);
+          results.push(`✅ Аккаунт ${account.accountNumber}: LONG лимит ${context.price}, ${tradeSize} контрактов`);
         } catch (error: any) {
+          logger?.error(`❌ Error submitting LONG limit order for account ${account.accountNumber}`, { error: error.message });
           results.push(`❌ Аккаунт ${account.accountNumber}: ${error.message}`);
         }
       }
@@ -339,17 +352,30 @@ export const openShortLimitTool = createTool({
       for (const account of accounts) {
         try {
           const client = createMexcClient(account.uId);
+          const tradeLeverage = context.leverage || account.defaultLeverage || 20;
+          
+          // Get size: use custom size, or symbol limit as maximum
+          let tradeSize = context.size;
+          if (!tradeSize) {
+            const symbolMax = await getSymbolLimit(symbol, logger);
+            tradeSize = symbolMax; // Open at maximum allowed for this symbol
+            logger?.info(`💡 Opening limit at max allowed size`, { tradeSize, symbolMax });
+          }
+          
+          logger?.info(`📍 Submitting limit order`, { symbol, price: context.price, size: tradeSize, leverage: tradeLeverage });
+          
           await client.submitOrder({
             symbol,
             side: 3,
-            vol: context.size || account.defaultSize || 10,
+            vol: tradeSize,
             type: 1,
             price: context.price,
-            leverage: context.leverage || account.defaultLeverage || 20,
+            leverage: tradeLeverage,
             openType: 2,
           });
-          results.push(`✅ Аккаунт ${account.accountNumber}: SHORT лимит ${context.price}`);
+          results.push(`✅ Аккаунт ${account.accountNumber}: SHORT лимит ${context.price}, ${tradeSize} контрактов`);
         } catch (error: any) {
+          logger?.error(`❌ Error submitting SHORT limit order for account ${account.accountNumber}`, { error: error.message });
           results.push(`❌ Аккаунт ${account.accountNumber}: ${error.message}`);
         }
       }
