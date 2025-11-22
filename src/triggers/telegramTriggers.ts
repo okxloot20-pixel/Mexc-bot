@@ -44,10 +44,10 @@ export function registerTelegramTrigger({
           await handler(mastra, {
             type: triggerType,
             params: {
-              userName: payload.message.from.username || "unknown",
-              message: payload.message.text || "",
-              telegramUserId: String(payload.message.from.id),
-              chatId: payload.message.chat.id,
+              userName: payload.message?.from?.username || "unknown",
+              message: payload.message?.text || "",
+              telegramUserId: String(payload.message?.from?.id || ""),
+              chatId: Number(payload.message?.chat?.id || 0),
             },
             payload,
           } as TriggerInfoTelegramOnNewMessage);

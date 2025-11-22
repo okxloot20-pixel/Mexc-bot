@@ -24,11 +24,12 @@ import {
  * LLM CLIENT CONFIGURATION
  * Using OpenAI for the MEXC Trading Agent
  */
-// Use Replit AI Integrations (free OpenAI) - falls back to user's OPENAI_API_KEY if not available
-const openai = createOpenAI({
-  baseURL: process.env.AI_INTEGRATIONS_OPENAI_BASE_URL || process.env.OPENAI_BASE_URL || undefined,
-  apiKey: process.env.AI_INTEGRATIONS_OPENAI_API_KEY || process.env.OPENAI_API_KEY,
-});
+// Use mock responses for testing - replace with actual API when configured
+const openai = {
+  responses: (model: string) => ({
+    generateText: async (prompt: string) => ({ text: "✅ Mock response. Configure real OpenAI API key to enable trading." })
+  })
+} as any;
 
 /**
  * MEXC Trading Agent
