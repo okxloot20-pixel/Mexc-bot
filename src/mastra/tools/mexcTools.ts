@@ -20,47 +20,6 @@ function createMexcClient(uId: string): MexcFuturesClient {
   });
 }
 
-// Helper: Get max position size - use all available balance * leverage
-// MEXC will validate the actual limit based on symbol specs
-async function calculateMaxPositionSize(client: MexcFuturesClient, leverage: number, logger?: any): Promise<number> {
-  try {
-    // Get account asset info - SDK returns: { success, code, data: { availableBalance, ... } }
-    const response = await client.getAccountAsset("USDT");
-    
-    // SDK wraps response in data object
-    const assetData = (response as any).data || response;
-    
-    // Try multiple property names since SDK might use different naming
-    const availableBalance = assetData?.availableBalance 
-      || assetData?.available 
-      || (response as any).availableBalance
-      || (response as any).balance 
-      || 0;
-    
-    logger?.info(`💰 Available balance: ${availableBalance} USDT`);
-    
-    if (availableBalance <= 0) {
-      logger?.warn(`⚠️ Balance is 0 or invalid, using fallback`);
-      // Use a fallback multiplier for testing
-      return Math.floor(100 * 0.9 * leverage);
-    }
-    
-    // Use 90% of balance to be safe (leave 10% margin buffer)
-    const maxUsdValue = availableBalance * 0.9 * leverage;
-    
-    logger?.info(`💰 Max USD value with ${leverage}x leverage: ${maxUsdValue} USDT`);
-    
-    // Return as contracts - MEXC SDK will convert based on symbol specs
-    // For safety, we'll request a large number and let MEXC validate
-    const maxContracts = Math.floor(maxUsdValue);
-    logger?.info(`📊 Max contracts to attempt: ${maxContracts}`);
-    
-    return Math.max(maxContracts, 1); // At least 1 contract
-  } catch (error: any) {
-    logger?.error('❌ Error calculating position size', { error: error.message });
-    return 10; // Fallback
-  }
-}
 
 
 /**
@@ -107,11 +66,8 @@ export const openLongMarketTool = createTool({
           const client = createMexcClient(account.uId);
           const tradeLeverage = context.leverage || account.defaultLeverage || 20;
           
-          // Get max size based on balance
-          let tradeSize = context.size;
-          if (!tradeSize) {
-            tradeSize = await calculateMaxPositionSize(client, tradeLeverage, logger);
-          }
+          // Get size - default to 10 contracts
+          const tradeSize = context.size || 10;
 
           logger?.info(`📍 Submitting order`, { symbol, size: tradeSize, leverage: tradeLeverage });
           
@@ -189,11 +145,8 @@ export const openShortMarketTool = createTool({
           const client = createMexcClient(account.uId);
           const tradeLeverage = context.leverage || account.defaultLeverage || 20;
           
-          // Get max size based on balance
-          let tradeSize = context.size;
-          if (!tradeSize) {
-            tradeSize = await calculateMaxPositionSize(client, tradeLeverage, logger);
-          }
+          // Get size - default to 10 contracts
+          const tradeSize = context.size || 10;
 
           logger?.info(`📍 Submitting order`, { symbol, size: tradeSize, leverage: tradeLeverage });
 
