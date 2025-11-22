@@ -306,6 +306,31 @@ U_ID: ${uId.substring(0, 30)}...
     return `✅ *Лимит SHORT ордер создаётся*\n\n${result}`;
   }
   
+  // Open SHORT limit at second bid price from orderbook
+  if (cmd.startsWith("/sb")) {
+    const parts = message.trim().split(/\s+/);
+    const symbol = parts[1] ? parts[1].toUpperCase() : "BTC";
+    const size = parts[2] ? parseInt(parts[2]) : undefined;
+    const leverage = parts[3] ? parseInt(parts[3]) : undefined;
+    
+    // Get second bid price from orderbook (API requires format without underscore)
+    const apiSymbol = `${symbol}USDT`;
+    const secondBidPrice = await getSecondBidPrice(apiSymbol);
+    
+    if (secondBidPrice === null) {
+      return `❌ Не удалось получить цену из стакана для ${apiSymbol}`;
+    }
+    
+    const result = await executeToolDirect(openShortLimitTool, {
+      telegramUserId: userId,
+      symbol,
+      price: secondBidPrice,
+      size,
+      leverage,
+    });
+    return `✅ *SHORT лимит по 2nd bid ${secondBidPrice}*\n\n${result}`;
+  }
+  
   // Close position
   if (cmd.startsWith("/close")) {
     const parts = message.trim().split(/\s+/);

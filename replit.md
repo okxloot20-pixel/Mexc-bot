@@ -26,7 +26,7 @@ The bot uses **direct command parsing** with **real MEXC API calls**:
 - **Command Parser** (`parseAndExecuteCommand` in `src/mastra/agents/mexcTradingAgent.ts`): Routes commands directly to MEXC API
 - **Real API Integration**: Uses `mexcApiCall()` to execute trades on MEXC futures
 - **Multi-account support**: Executes trades on ALL registered accounts simultaneously
-- **15+ trading commands**: /lm, /sm, /l, /s, /sb, /close, /closebs, /lc, /sc, /lcm, /scm, /positions, /orders, /balance, /cancel
+- **15+ trading commands**: /lm, /sm, /l, /s, /sb, /close, /lc, /sc, /lcm, /scm, /positions, /orders, /balance, /cancel
 - **Account management**: /register (saves u_id), /accounts (lists from DB), /settings
 
 
