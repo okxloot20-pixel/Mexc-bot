@@ -308,7 +308,8 @@ export const openLongLimitTool = createTool({
 
       return { success: results.some(r => r.includes("✅")), message: results.join("\n") };
     } catch (error: any) {
-      return { success: false, message: `Ошибка: ${error.message}` };
+      const errorMsg = error?.message || error?.toString?.() || String(error) || 'Unknown error';
+      return { success: false, message: `Ошибка: ${errorMsg}` };
     }
   },
 });
@@ -375,14 +376,16 @@ export const openShortLimitTool = createTool({
           });
           results.push(`✅ Аккаунт ${account.accountNumber}: SHORT лимит ${context.price}, ${tradeSize} контрактов`);
         } catch (error: any) {
-          logger?.error(`❌ Error submitting SHORT limit order for account ${account.accountNumber}`, { error: error.message });
-          results.push(`❌ Аккаунт ${account.accountNumber}: ${error.message}`);
+          const errorMsg = error?.message || error?.toString?.() || String(error) || 'Unknown error';
+          logger?.error(`❌ Error submitting SHORT limit order for account ${account.accountNumber}`, { error: errorMsg });
+          results.push(`❌ Аккаунт ${account.accountNumber}: ${errorMsg}`);
         }
       }
 
       return { success: results.some(r => r.includes("✅")), message: results.join("\n") };
     } catch (error: any) {
-      return { success: false, message: `Ошибка: ${error.message}` };
+      const errorMsg = error?.message || error?.toString?.() || String(error) || 'Unknown error';
+      return { success: false, message: `Ошибка: ${errorMsg}` };
     }
   },
 });
@@ -479,7 +482,8 @@ export const closePositionTool = createTool({
 
       return { success: results.some(r => r.includes("✅")), message: results.join("\n") };
     } catch (error: any) {
-      return { success: false, message: `Ошибка: ${error.message}` };
+      const errorMsg = error?.message || error?.toString?.() || String(error) || 'Unknown error';
+      return { success: false, message: `Ошибка: ${errorMsg}` };
     }
   },
 });
@@ -731,7 +735,8 @@ export const cancelOrdersTool = createTool({
 
       return { success: results.some(r => r.includes("✅")), message: results.join("\n") };
     } catch (error: any) {
-      return { success: false, message: `Ошибка: ${error.message}` };
+      const errorMsg = error?.message || error?.toString?.() || String(error) || 'Unknown error';
+      return { success: false, message: `Ошибка: ${errorMsg}` };
     }
   },
 });
@@ -838,7 +843,8 @@ export const closeShortAtPriceTool = createTool({
 
       return { success: results.some(r => r.includes("✅")), message: results.join("\n") };
     } catch (error: any) {
-      return { success: false, message: `Ошибка: ${error.message}` };
+      const errorMsg = error?.message || error?.toString?.() || String(error) || 'Unknown error';
+      return { success: false, message: `Ошибка: ${errorMsg}` };
     }
   },
 });
