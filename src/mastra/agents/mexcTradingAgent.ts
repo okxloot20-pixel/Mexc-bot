@@ -229,17 +229,15 @@ export async function parseAndExecuteCommand(message: string, userId: string, ma
   if (cmd === "/start" || cmd === "/help") {
     return JSON.stringify({
       type: "menu",
-      text: `🤖 *Mexc Futures Trading Bot*
-
-Выбери раздел ниже для управления торговлей`,
+      text: "🤖 *Mexc Futures Trading Bot*",
       keyboard: [
         [
           { text: "📈 Трейдинг", callback_data: "trading" },
-          { text: "💼 Позиции", callback_data: "positions" }
+          { text: "📊 Позиции", callback_data: "positions" }
         ],
         [
           { text: "👤 Аккаунт", callback_data: "account" },
-          { text: "📊 Ордеры", callback_data: "orders" }
+          { text: "📦 Ордеры", callback_data: "orders" }
         ],
         [
           { text: "🎯 Подписка", callback_data: "subscription" }
@@ -247,7 +245,7 @@ export async function parseAndExecuteCommand(message: string, userId: string, ma
         [
           { text: "🚨 Сигналы", callback_data: "signals" },
           { text: "⚙️ Настройки", callback_data: "settings" },
-          { text: "❓ Help", callback_data: "help" }
+          { text: "ℹ️ Help", callback_data: "help" }
         ]
       ]
     });
