@@ -318,10 +318,27 @@ export const mastra = new Mastra({
                 } else if (callbackData.startsWith("toggle_account_")) {
                   // Handle account toggle via callback
                   const accountNumber = parseInt(callbackData.split("_")[2]);
-                  // Simulate clicking the button by sending the account number
-                  // The agent will handle checking the current status and toggling it
-                  const simulatedMessage = `✅ ${accountNumber}`;
-                  response = await parseAndExecuteCommand(simulatedMessage, userId, mastra);
+                  
+                  try {
+                    // Get current account status from DB
+                    const account = await db.query.mexcAccounts.findFirst({
+                      where: and(
+                        eq(mexcAccounts.telegramUserId, userId),
+                        eq(mexcAccounts.accountNumber, accountNumber)
+                      ),
+                    });
+                    
+                    if (account) {
+                      // Send the current status so agent can toggle it properly
+                      const statusPrefix = account.isActive ? "✅" : "❌";
+                      const simulatedMessage = `${statusPrefix} ${accountNumber}`;
+                      response = await parseAndExecuteCommand(simulatedMessage, userId, mastra);
+                    } else {
+                      response = `❌ Аккаунт #${accountNumber} не найден`;
+                    }
+                  } catch (error: any) {
+                    response = `❌ Ошибка: ${error.message}`;
+                  }
                 } else {
                   response = "📨 Неизвестная команда";
                 }
