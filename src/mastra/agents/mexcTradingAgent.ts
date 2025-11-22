@@ -88,7 +88,7 @@ async function openPositionOnAccounts(
         const response = await mexcApiCall(
           "/api/v1/private/order/submit",
           "POST",
-          account.webUid,
+          account.uId,
           account.proxy || null,
           params
         );
@@ -141,21 +141,23 @@ export async function parseAndExecuteCommand(message: string, userId: string, ma
       return `📝 *Регистрация аккаунта MEXC*
 
 Отправь данные в формате:
-\`/register ACCOUNT_NUM WEB_UID [PROXY_URL]\`
+\`/register ACCOUNT_NUM U_ID [PROXY_URL]\`
+
+U_ID находится в девтулах браузера → Application → Cookies → u_id
 
 Пример:
-\`/register 1 abc123def456 http://proxy.com:8080\``;
+\`/register 474 156.246.241.55:63016:uYgG5GfzfZFWGZnW\``;
     } else {
       // /register with parameters - save to database
       const accountNum = parseInt(parts[1]);
-      const webUid = parts[2];
+      const uId = parts[2];
       const proxyUrl = parts[3] || "";
       
       try {
         await db.insert(mexcAccounts).values({
           telegramUserId: userId,
           accountNumber: accountNum,
-          webUid: webUid,
+          uId: uId,
           proxy: proxyUrl || null,
           isActive: true,
         });
@@ -163,7 +165,7 @@ export async function parseAndExecuteCommand(message: string, userId: string, ma
         return `✅ *Аккаунт зарегистрирован*
 
 Номер аккаунта: ${accountNum}
-WEB_UID: ${webUid.substring(0, 10)}...
+U_ID: ${uId.substring(0, 30)}...
 Прокси: ${proxyUrl || "не установлен"}
 
 Используйте /accounts для просмотра всех аккаунтов`;
@@ -190,7 +192,7 @@ WEB_UID: ${webUid.substring(0, 10)}...
       let response = `📊 *Ваши аккаунты*\n\n`;
       accounts.forEach((acc, idx) => {
         response += `${idx + 1}️⃣ Аккаунт #${acc.accountNumber}\n`;
-        response += `   WEB_UID: ${acc.webUid.substring(0, 20)}...\n`;
+        response += `   U_ID: ${acc.uId.substring(0, 20)}...\n`;
         if (acc.proxy) response += `   Прокси: ${acc.proxy}\n`;
         response += `   Рычаг: ${acc.defaultLeverage}x | Размер: ${acc.defaultSize}\n\n`;
       });
@@ -278,7 +280,7 @@ WEB_UID: ${webUid.substring(0, 10)}...
           const response = await mexcApiCall(
             "/api/v1/private/order/submit",
             "POST",
-            account.webUid,
+            account.uId,
             account.proxy || null,
             {
               symbol: fullSymbol,
@@ -370,7 +372,7 @@ WEB_UID: ${webUid.substring(0, 10)}...
           const response = await mexcApiCall(
             "/api/v1/private/position/list",
             "GET",
-            account.webUid,
+            account.uId,
             account.proxy || null
           );
 
@@ -419,7 +421,7 @@ WEB_UID: ${webUid.substring(0, 10)}...
           const response = await mexcApiCall(
             "/api/v1/private/balance",
             "GET",
-            account.webUid,
+            account.uId,
             account.proxy || null
           );
 

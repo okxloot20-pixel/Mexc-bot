@@ -27,12 +27,12 @@ The bot uses **direct command parsing** with **real MEXC API calls**:
 - **Real API Integration**: Uses `mexcApiCall()` to execute trades on MEXC futures
 - **Multi-account support**: Executes trades on ALL registered accounts simultaneously
 - **13+ trading commands**: /lm, /sm, /l, /s, /close, /lc, /sc, /lcm, /scm, /positions, /orders, /balance, /cancel
-- **Account management**: /register (saves WEB_UID), /accounts (lists from DB), /settings
+- **Account management**: /register (saves u_id), /accounts (lists from DB), /settings
 
 **Implementation Details**:
-- Accounts stored in PostgreSQL (`mexc_accounts` table) with WEB_UID and proxy settings
+- Accounts stored in PostgreSQL (`mexc_accounts` table) with u_id and proxy settings
 - Each command gets accounts from DB and makes authenticated MEXC API requests
-- WEB_UID extracted from browser cookies, used in API calls for authentication
+- u_id extracted from browser cookies, used in API calls for authentication (format: `IP:PORT:TOKEN`)
 - Errors handled gracefully with per-account failure reporting
 
 **Rationale**: Trading bots need instant responses with real execution. Direct API calls eliminate LLM latency while maintaining accuracy and multi-account control.
@@ -58,7 +58,8 @@ The bot uses **direct command parsing** with **real MEXC API calls**:
 - ✅ All 13+ commands responding with proper parameter parsing
 - ✅ Chat validation working
 - ✅ Messages delivering instantly (< 200ms)
-- ✅ Command parameter parsing: `/register ACCOUNT_NUM WEB_UID [PROXY_URL]`
+- ✅ Command parameter parsing: `/register ACCOUNT_NUM U_ID [PROXY_URL]`
+- ✅ Real MEXC API integration using u_id authentication (November 22, 2025)
 - ✅ Full support for all trading commands with optional parameters
 
 ## Durable Execution with Inngest

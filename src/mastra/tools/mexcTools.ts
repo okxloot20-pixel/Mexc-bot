@@ -25,11 +25,11 @@ function createMexcSignature(params: Record<string, any>, secretKey: string): st
     .digest('hex');
 }
 
-// Helper function to make authenticated MEXC API calls with WEB_UID
+// Helper function to make authenticated MEXC API calls with u_id
 export async function mexcApiCall(
   endpoint: string,
   method: string,
-  webUid: string,
+  uId: string,
   proxy: string | null,
   params: Record<string, any> = {}
 ): Promise<any> {
@@ -41,7 +41,7 @@ export async function mexcApiCall(
     timestamp,
   };
 
-  // MEXC authentication headers - try multiple approaches
+  // MEXC authentication headers - use u_id for authentication
   const headers: Record<string, string> = {
     "Content-Type": "application/json",
     "Accept": "application/json",
@@ -55,9 +55,9 @@ export async function mexcApiCall(
     "Sec-Fetch-Dest": "empty",
     "Sec-Fetch-Mode": "cors",
     "Sec-Fetch-Site": "same-origin",
-    // WEB_UID can be in header OR cookie - try both
-    "X-WEB-UID": webUid,
-    "Cookie": `WEB_UID=${webUid}; path=/`,
+    // u_id authentication headers
+    "X-U-ID": uId,
+    "Cookie": `u_id=${uId}; path=/`,
   };
 
   const fetchOptions: RequestInit = {
@@ -156,7 +156,7 @@ export const openLongMarketTool = createTool({
           const result = await mexcApiCall(
             "/api/v1/private/order/submit",
             "POST",
-            account.webUid,
+            account.uId,
             account.proxy || null,
             {
               symbol,
@@ -261,7 +261,7 @@ export const openShortMarketTool = createTool({
           const result = await mexcApiCall(
             "/api/v1/private/order/submit",
             "POST",
-            account.webUid,
+            account.uId,
             account.proxy || null,
             {
               symbol,
@@ -367,7 +367,7 @@ export const openLongLimitTool = createTool({
           const result = await mexcApiCall(
             "/api/v1/private/order/submit",
             "POST",
-            account.webUid,
+            account.uId,
             account.proxy || null,
             {
               symbol,
@@ -474,7 +474,7 @@ export const openShortLimitTool = createTool({
           const result = await mexcApiCall(
             "/api/v1/private/order/submit",
             "POST",
-            account.webUid,
+            account.uId,
             account.proxy || null,
             {
               symbol,
@@ -577,7 +577,7 @@ export const closePositionTool = createTool({
           const positions = await mexcApiCall(
             "/api/v1/private/position/list",
             "GET",
-            account.webUid,
+            account.uId,
             account.proxy || null,
             { symbol }
           );
@@ -601,7 +601,7 @@ export const closePositionTool = createTool({
           const result = await mexcApiCall(
             "/api/v1/private/order/submit",
             "POST",
-            account.webUid,
+            account.uId,
             account.proxy || null,
             {
               symbol,
@@ -704,7 +704,7 @@ export const getPositionsTool = createTool({
           const result = await mexcApiCall(
             "/api/v1/private/position/list",
             "GET",
-            account.webUid,
+            account.uId,
             account.proxy || null,
             {}
           );
@@ -804,7 +804,7 @@ export const getBalanceTool = createTool({
           const result = await mexcApiCall(
             "/api/v1/private/account/assets",
             "GET",
-            account.webUid,
+            account.uId,
             account.proxy || null,
             {}
           );
@@ -912,7 +912,7 @@ export const getOrdersTool = createTool({
           const result = await mexcApiCall(
             "/api/v1/private/order/list/open_orders",
             "GET",
-            account.webUid,
+            account.uId,
             account.proxy || null,
             params
           );
@@ -1008,7 +1008,7 @@ export const cancelOrdersTool = createTool({
           const result = await mexcApiCall(
             "/api/v1/private/order/cancel_all",
             "POST",
-            account.webUid,
+            account.uId,
             account.proxy || null,
             { symbol }
           );

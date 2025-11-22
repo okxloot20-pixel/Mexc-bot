@@ -2,7 +2,7 @@ import { pgTable, serial, varchar, timestamp, boolean, integer } from "drizzle-o
 
 /**
  * MEXC Accounts Table
- * Stores multiple MEXC trading accounts with their WEB-UID and proxy settings
+ * Stores multiple MEXC trading accounts with their u_id and proxy settings
  */
 export const mexcAccounts = pgTable("mexc_accounts", {
   id: serial("id").primaryKey(),
@@ -16,7 +16,7 @@ export const mexcAccounts = pgTable("mexc_accounts", {
   accountName: varchar("account_name", { length: 255 }), // Optional custom name
   
   // MEXC credentials
-  webUid: varchar("web_uid", { length: 500 }).notNull(),
+  uId: varchar("u_id", { length: 500 }).notNull(),
   proxy: varchar("proxy", { length: 500 }), // Optional proxy URL
   
   // Trading settings (defaults)
