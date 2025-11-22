@@ -400,19 +400,26 @@ export const closePositionTool = createTool({
           const client = createMexcClient(account.uId);
           // Get all positions (pass empty string to get all)
           const posResponse = await client.getOpenPositions("");
-          const allPositions = Array.isArray(posResponse) ? posResponse : [];
           
-          logger?.info(`📍 Got positions response`, { posResponse, allPositions, allPositionsLength: allPositions.length });
+          // Extract data array from response object
+          let allPositions: any[] = [];
+          if (posResponse && typeof posResponse === 'object' && Array.isArray(posResponse.data)) {
+            allPositions = posResponse.data;
+          } else if (Array.isArray(posResponse)) {
+            allPositions = posResponse;
+          }
+          
+          logger?.info(`📍 Got positions response`, { allPositionsLength: allPositions.length });
           
           // Log all positions to see what we have
           if (allPositions.length > 0) {
-            logger?.info(`📋 All open positions:`, allPositions.map((p: any) => ({ symbol: p.symbol, side: p.side, holdVol: p.holdVol })));
+            logger?.info(`📋 All open positions:`, allPositions.map((p: any) => ({ symbol: p.symbol, holdVol: p.holdVol })));
           }
           
           // Filter for our symbol
           const positions = allPositions.filter((pos: any) => pos.symbol === symbol);
           
-          logger?.info(`🔍 Filtered positions for ${symbol}:`, { positions, filteredCount: positions.length });
+          logger?.info(`🔍 Filtered positions for ${symbol}:`, { filteredCount: positions.length });
 
           if (positions.length === 0) {
             results.push(`⚠️ Аккаунт ${account.accountNumber}: нет открытых позиций по ${symbol}`);
