@@ -253,12 +253,12 @@ U_ID: ${uId.substring(0, 30)}...
     const size = parts[2] ? parseInt(parts[2]) : undefined;
     const leverage = parts[3] ? parseInt(parts[3]) : undefined;
     
-    // Get best bid price from orderbook
-    const fullSymbol = `${symbol}_USDT`;
-    const bestBidPrice = await getBestBidPrice(fullSymbol);
+    // Get best bid price from orderbook (API requires format without underscore)
+    const apiSymbol = `${symbol}USDT`;
+    const bestBidPrice = await getBestBidPrice(apiSymbol);
     
     if (bestBidPrice === null) {
-      return `❌ Не удалось получить цену из стакана для ${fullSymbol}`;
+      return `❌ Не удалось получить цену из стакана для ${apiSymbol}`;
     }
     
     const result = await executeToolDirect(openShortLimitTool, {
