@@ -31,5 +31,26 @@ export const mexcAccounts = pgTable("mexc_accounts", {
   updatedAt: timestamp("updated_at").defaultNow().notNull(),
 });
 
+/**
+ * Symbol Limits Table
+ * Stores maximum contract limits for each trading symbol
+ * Example: ARTX_USDT has max 75 contracts
+ */
+export const symbolLimits = pgTable("symbol_limits", {
+  id: serial("id").primaryKey(),
+  
+  // Symbol name (e.g., ARTX_USDT, BTC_USDT)
+  symbol: varchar("symbol", { length: 50 }).notNull().unique(),
+  
+  // Maximum contracts allowed for this symbol
+  maxContracts: integer("max_contracts").notNull().default(100),
+  
+  // Timestamps
+  createdAt: timestamp("created_at").defaultNow().notNull(),
+  updatedAt: timestamp("updated_at").defaultNow().notNull(),
+});
+
 export type MexcAccount = typeof mexcAccounts.$inferSelect;
 export type NewMexcAccount = typeof mexcAccounts.$inferInsert;
+export type SymbolLimit = typeof symbolLimits.$inferSelect;
+export type NewSymbolLimit = typeof symbolLimits.$inferInsert;

@@ -2,7 +2,7 @@ import { createTool } from "@mastra/core/tools";
 import { z } from "zod";
 import { MexcFuturesClient } from "@max89701/mexc-futures-sdk";
 import { db } from "../storage/db";
-import { mexcAccounts } from "../storage/schema";
+import { mexcAccounts, symbolLimits } from "../storage/schema";
 import { eq, and } from "drizzle-orm";
 
 /**
@@ -18,6 +18,22 @@ function createMexcClient(uId: string): MexcFuturesClient {
     authToken: uId,
     logLevel: "INFO"
   });
+}
+
+// Helper: Get max contract limit for a symbol
+async function getSymbolLimit(symbol: string, logger?: any): Promise<number> {
+  try {
+    const limit = await db.query.symbolLimits.findFirst({
+      where: eq(symbolLimits.symbol, symbol),
+    });
+    
+    const maxContracts = limit?.maxContracts || 100; // Default to 100 if not found
+    logger?.info(`📊 Symbol ${symbol} max contracts: ${maxContracts}`);
+    return maxContracts;
+  } catch (error: any) {
+    logger?.warn(`⚠️ Error getting symbol limit for ${symbol}`, { error: error.message });
+    return 100; // Default to 100
+  }
 }
 
 
@@ -66,8 +82,13 @@ export const openLongMarketTool = createTool({
           const client = createMexcClient(account.uId);
           const tradeLeverage = context.leverage || account.defaultLeverage || 20;
           
-          // Get size - default to 10 contracts
-          const tradeSize = context.size || 10;
+          // Get size: use custom size, or symbol limit as maximum
+          let tradeSize = context.size;
+          if (!tradeSize) {
+            const symbolMax = await getSymbolLimit(symbol, logger);
+            tradeSize = symbolMax; // Open at maximum allowed for this symbol
+            logger?.info(`💡 Opening at max allowed size`, { tradeSize, symbolMax });
+          }
 
           logger?.info(`📍 Submitting order`, { symbol, size: tradeSize, leverage: tradeLeverage });
           
@@ -145,8 +166,13 @@ export const openShortMarketTool = createTool({
           const client = createMexcClient(account.uId);
           const tradeLeverage = context.leverage || account.defaultLeverage || 20;
           
-          // Get size - default to 10 contracts
-          const tradeSize = context.size || 10;
+          // Get size: use custom size, or symbol limit as maximum
+          let tradeSize = context.size;
+          if (!tradeSize) {
+            const symbolMax = await getSymbolLimit(symbol, logger);
+            tradeSize = symbolMax; // Open at maximum allowed for this symbol
+            logger?.info(`💡 Opening at max allowed size`, { tradeSize, symbolMax });
+          }
 
           logger?.info(`📍 Submitting order`, { symbol, size: tradeSize, leverage: tradeLeverage });
 
