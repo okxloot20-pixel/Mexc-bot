@@ -20,15 +20,39 @@ function createMexcClient(uId: string): MexcFuturesClient {
   });
 }
 
+// Helper: Get contract unit price (USDT per contract)
+// BTC=100, ETH=10, small coins=1
+function getContractUnitPrice(symbol: string): number {
+  const base = symbol.split('_')[0];
+  
+  // Known major coins with their contract values
+  const contractPrices: { [key: string]: number } = {
+    'BTC': 100,
+    'ETH': 10,
+  };
+  
+  // Check if known major coin
+  if (contractPrices[base]) {
+    return contractPrices[base];
+  }
+  
+  // Default for smaller coins
+  return 1;
+}
+
 // Helper: Calculate max position size based on balance and leverage
-async function getMaxPositionSize(client: MexcFuturesClient, leverage: number, logger?: any): Promise<number> {
+async function getMaxPositionSize(client: MexcFuturesClient, symbol: string, leverage: number, logger?: any): Promise<number> {
   try {
     const asset = await client.getAccountAsset("USDT");
-    const balance = (asset as any).availableBalance || (asset as any).balance || 0;
+    const availableBalance = (asset as any).availableBalance || (asset as any).balance || 0;
     
-    // Max size = balance * leverage (all available margin)
-    const maxSize = Math.floor(balance * leverage);
-    logger?.info(`💰 Max position size calculated: ${maxSize} contracts (balance: ${balance} USDT, leverage: ${leverage}x)`);
+    const contractUnit = getContractUnitPrice(symbol);
+    
+    // Max size = (balance * leverage) / contractUnitPrice
+    // Example: balance=100 USDT, leverage=20x, BTC contract=100 USD
+    // maxSize = (100 * 20) / 100 = 20 contracts
+    const maxSize = Math.floor((availableBalance * leverage) / contractUnit);
+    logger?.info(`💰 Max position size: ${maxSize} contracts (balance: ${availableBalance} USDT, leverage: ${leverage}x, contract unit: ${contractUnit} USDT)`);
     return Math.max(maxSize, 1); // At least 1 contract
   } catch (error: any) {
     logger?.error('❌ Error calculating max size', { error: error.message });
@@ -83,7 +107,7 @@ export const openLongMarketTool = createTool({
           // Get max size based on balance
           let tradeSize = context.size;
           if (!tradeSize) {
-            tradeSize = await getMaxPositionSize(client, tradeLeverage, logger);
+            tradeSize = await getMaxPositionSize(client, symbol, tradeLeverage, logger);
           }
 
           logger?.info(`📍 Submitting order`, { symbol, size: tradeSize, leverage: tradeLeverage });
@@ -165,7 +189,7 @@ export const openShortMarketTool = createTool({
           // Get max size based on balance
           let tradeSize = context.size;
           if (!tradeSize) {
-            tradeSize = await getMaxPositionSize(client, tradeLeverage, logger);
+            tradeSize = await getMaxPositionSize(client, symbol, tradeLeverage, logger);
           }
 
           logger?.info(`📍 Submitting order`, { symbol, size: tradeSize, leverage: tradeLeverage });
