@@ -26,7 +26,8 @@ function createMexcSignature(params: Record<string, any>, secretKey: string): st
 }
 
 // Helper function to make authenticated MEXC API calls with u_id
-// u_id format: IP:PORT:TOKEN (e.g., 156.246.241.55:63016:uYgG5GfzfZFWGZnW)
+// u_id is obtained from MEXC browser cookies (DevTools → Application → Cookies → u_id)
+// Example: WEB06040d90... (usually starts with WEB)
 export async function mexcApiCall(
   endpoint: string,
   method: string,
@@ -42,8 +43,8 @@ export async function mexcApiCall(
     timestamp,
   };
 
-  // MEXC uses u_id directly as authentication token
-  // Format: u_id is set as cookie value
+  // MEXC uses u_id as authentication cookie
+  // The u_id value from browser cookies is sent directly
   const headers: Record<string, string> = {
     "Content-Type": "application/json",
     "Accept": "application/json",
@@ -57,8 +58,8 @@ export async function mexcApiCall(
     "Sec-Fetch-Dest": "empty",
     "Sec-Fetch-Mode": "cors",
     "Sec-Fetch-Site": "same-origin",
-    // u_id must be sent as cookie - MEXC validates this for authentication
-    "Cookie": `u_id=${uId}`,
+    // u_id from browser cookies sent as authentication
+    "Cookie": `u_id=${uId}; uc_token=${uId}`,
   };
 
   const fetchOptions: RequestInit = {

@@ -11,16 +11,16 @@ import { eq, and } from "drizzle-orm";
 
 /**
  * Tool: Register New Account
- * Adds a new MEXC account with WEB-UID and proxy
+ * Adds a new MEXC account with u_id and proxy
  */
 export const registerAccountTool = createTool({
   id: "register-account",
-  description: "Registers a new MEXC trading account with WEB-UID and optional proxy",
+  description: "Registers a new MEXC trading account with u_id from browser cookies and optional proxy",
   inputSchema: z.object({
     telegramUserId: z.string().describe("Telegram user ID"),
     telegramUsername: z.string().optional().describe("Telegram username"),
     accountNumber: z.number().describe("Account number (e.g., 458, 459)"),
-    webUid: z.string().describe("WEB-UID from MEXC cookies"),
+    uId: z.string().describe("u_id from MEXC browser cookies (DevTools → Application → Cookies)"),
     proxy: z.string().optional().describe("Proxy URL (optional, format: http://ip:port)"),
     defaultLeverage: z.number().optional().describe("Default leverage (optional, default: 20)"),
     defaultSize: z.number().optional().describe("Default position size (optional, default: 10)"),
@@ -58,7 +58,7 @@ export const registerAccountTool = createTool({
         telegramUserId: context.telegramUserId,
         telegramUsername: context.telegramUsername,
         accountNumber: context.accountNumber,
-        webUid: context.webUid,
+        uId: context.uId,
         proxy: context.proxy,
         defaultLeverage: context.defaultLeverage || 20,
         defaultSize: context.defaultSize || 10,
@@ -72,7 +72,7 @@ export const registerAccountTool = createTool({
       return {
         success: true,
         accountId: newAccount.id,
-        message: `✅ Аккаунт ${context.accountNumber} успешно зарегистрирован!\nWEB-UID: ${context.webUid.substring(0, 20)}...\n${context.proxy ? `Proxy: ${context.proxy}` : 'Proxy: не указан'}`,
+        message: `✅ Аккаунт ${context.accountNumber} успешно зарегистрирован!\nu_id: ${context.uId.substring(0, 20)}...\n${context.proxy ? `Proxy: ${context.proxy}` : 'Proxy: не указан'}`,
       };
     } catch (error: any) {
       logger?.error('❌ [registerAccountTool] Error registering account', {
@@ -100,7 +100,7 @@ export const listAccountsTool = createTool({
     success: z.boolean(),
     accounts: z.array(z.object({
       accountNumber: z.number(),
-      webUid: z.string(),
+      uId: z.string(),
       proxy: z.string().optional(),
       defaultLeverage: z.number(),
       defaultSize: z.number(),
@@ -136,7 +136,7 @@ export const listAccountsTool = createTool({
         success: true,
         accounts: accounts.map(acc => ({
           accountNumber: acc.accountNumber,
-          webUid: acc.webUid,
+          uId: acc.uId,
           proxy: acc.proxy || undefined,
           defaultLeverage: acc.defaultLeverage || 20,
           defaultSize: acc.defaultSize || 10,
@@ -296,7 +296,7 @@ export const updateAccountSettingsTool = createTool({
  */
 export const getAccountCredentialsTool = createTool({
   id: "get-account-credentials",
-  description: "Retrieves WEB-UID and proxy for active MEXC accounts",
+  description: "Retrieves u_id and proxy for active MEXC accounts",
   inputSchema: z.object({
     telegramUserId: z.string().describe("Telegram user ID"),
     accountNumber: z.number().optional().describe("Specific account number (optional, returns all active if not provided)"),
@@ -305,7 +305,7 @@ export const getAccountCredentialsTool = createTool({
     success: z.boolean(),
     accounts: z.array(z.object({
       accountNumber: z.number(),
-      webUid: z.string(),
+      uId: z.string(),
       proxy: z.string().optional(),
       defaultLeverage: z.number(),
       defaultSize: z.number(),
@@ -348,7 +348,7 @@ export const getAccountCredentialsTool = createTool({
         success: true,
         accounts: accounts.map(acc => ({
           accountNumber: acc.accountNumber,
-          webUid: acc.webUid,
+          uId: acc.uId,
           proxy: acc.proxy || undefined,
           defaultLeverage: acc.defaultLeverage || 20,
           defaultSize: acc.defaultSize || 10,
