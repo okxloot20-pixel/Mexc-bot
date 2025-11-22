@@ -312,24 +312,6 @@ U_ID: ${uId.substring(0, 30)}...
     return `🔴 *SHORT позиция открывается*\n\n${result}`;
   }
   
-  // Open LONG limit
-  if (cmd.startsWith("/l ")) {
-    const parts = message.trim().split(/\s+/);
-    const price = parseFloat(parts[1]) || 0;
-    const symbol = parts[2] ? parts[2].toUpperCase() : "BTC";
-    const size = parts[3] ? parseInt(parts[3]) : undefined;
-    const leverage = parts[4] ? parseInt(parts[4]) : undefined;
-    
-    const result = await executeToolDirect(openLongLimitTool, {
-      telegramUserId: userId,
-      symbol,
-      price,
-      size,
-      leverage,
-    });
-    return `✅ *Лимит LONG ордер создаётся*\n\n${result}`;
-  }
-  
   
   // Open SHORT limit at second bid price from orderbook
   if (cmd.startsWith("/sb")) {
