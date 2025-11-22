@@ -109,20 +109,37 @@ const sendTelegramResponse = createStep({
 
       const telegramApiUrl = `https://api.telegram.org/bot${botToken}/sendMessage`;
       
+      const responseBody = JSON.stringify({
+        chat_id: inputData.chatId,
+        text: inputData.response,
+      });
+
+      logger?.info('📨 [sendTelegramResponse] Making Telegram API call', {
+        url: telegramApiUrl,
+        chatId: inputData.chatId,
+      });
+
       const response = await fetch(telegramApiUrl, {
         method: "POST",
         headers: {
           "Content-Type": "application/json",
         },
-        body: JSON.stringify({
-          chat_id: inputData.chatId,
-          text: inputData.response,
-          parse_mode: "HTML",
-        }),
+        body: responseBody,
+      });
+
+      const responseText = await response.text();
+      logger?.debug('📡 [sendTelegramResponse] Telegram API response', {
+        status: response.status,
+        statusText: response.statusText,
+        body: responseText,
       });
 
       if (!response.ok) {
-        throw new Error(`Telegram API error: ${response.statusText}`);
+        logger?.error('❌ [sendTelegramResponse] Telegram API returned error', {
+          statusCode: response.status,
+          response: responseText,
+        });
+        throw new Error(`Telegram API error: ${response.status} ${response.statusText}`);
       }
 
       logger?.info('✅ [sendTelegramResponse] Response sent successfully');

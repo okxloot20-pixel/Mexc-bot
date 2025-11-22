@@ -10,7 +10,7 @@ import { z } from "zod";
 import { sharedPostgresStorage } from "./storage";
 import { inngest, inngestServe } from "./inngest";
 import { telegramTradingWorkflow } from "./workflows/telegramTradingWorkflow";
-import { mexcTradingAgent } from "./agents/mexcTradingAgent";
+import { mexcTradingAgent, parseAndExecuteCommand } from "./agents/mexcTradingAgent";
 import { registerTelegramTrigger } from "../triggers/telegramTriggers";
 
 class ProductionPinoLogger extends MastraLogger {
@@ -209,46 +209,71 @@ export const mastra = new Mastra({
       //
       // ======================================================================
 
-      // Add more connector triggers below using the same pattern
-      // ...registerGithubTrigger({ ... }),
-      // ...registerSlackTrigger({ ... }),
-      // ...registerStripeWebhook({ ... }),
-      
       // ======================================================================
-      // Telegram Trigger for MEXC Trading Bot
+      // DIRECT Telegram Webhook - Fast Response
       // ======================================================================
-      ...registerTelegramTrigger({
-        triggerType: "telegram/message",
-        handler: async (mastra, triggerInfo) => {
-          const logger = mastra.getLogger();
-          logger?.info("🤖 [Telegram Trigger] Processing message", {
-            userName: triggerInfo.params.userName,
-            message: triggerInfo.params.message,
-            telegramUserId: triggerInfo.params.telegramUserId,
-          });
-
-          try {
-            const threadId = `telegram-${triggerInfo.params.telegramUserId}-${Date.now()}`;
-
-            const run = await telegramTradingWorkflow.createRunAsync();
-            await run.start({
-              inputData: {
-                threadId,
-                userName: triggerInfo.params.userName,
-                telegramUserId: triggerInfo.params.telegramUserId,
-                message: triggerInfo.params.message,
-                chatId: triggerInfo.params.chatId,
-              },
-            });
+      // Simple direct endpoint for Telegram messages - no workflow delays
+      {
+        path: "/webhooks/telegram/action",
+        method: "POST",
+        createHandler: async () => {
+          return async (c: any) => {
+            const mastra = c.get("mastra");
+            const logger = mastra?.getLogger();
             
-            logger?.info("✅ [Telegram Trigger] Workflow started successfully");
-          } catch (error: any) {
-            logger?.error("❌ [Telegram Trigger] Error starting workflow", {
-              error: error.message,
-            });
-          }
+            try {
+              const payload = await c.req.json();
+              const message = payload.message?.text || "";
+              const userId = String(payload.message?.from?.id || "");
+              const chatId = payload.message?.chat?.id;
+              const username = payload.message?.from?.username || "unknown";
+
+              logger?.info("📱 [Telegram] Received message", {
+                message,
+                userId,
+                chatId,
+                username,
+              });
+
+              // Parse and execute command
+              const response = parseAndExecuteCommand(message, userId);
+
+              // Send response back to Telegram
+              if (chatId && process.env.TELEGRAM_BOT_TOKEN) {
+                const apiUrl = `https://api.telegram.org/bot${process.env.TELEGRAM_BOT_TOKEN}/sendMessage`;
+                
+                logger?.info("📤 [Telegram] Sending response", { chatId, responseLength: response.length });
+
+                const apiResponse = await fetch(apiUrl, {
+                  method: "POST",
+                  headers: { "Content-Type": "application/json" },
+                  body: JSON.stringify({
+                    chat_id: chatId,
+                    text: response,
+                  }),
+                });
+
+                const apiData = await apiResponse.json();
+                
+                if (apiResponse.ok) {
+                  logger?.info("✅ [Telegram] Response sent successfully");
+                } else {
+                  logger?.error("❌ [Telegram] Failed to send response", {
+                    error: apiData.description || apiResponse.statusText,
+                  });
+                }
+              }
+
+              return c.text("OK", 200);
+            } catch (error: any) {
+              logger?.error("❌ [Telegram] Webhook error", {
+                error: error.message,
+              });
+              return c.text("OK", 200); // Return OK even on error to prevent Telegram retries
+            }
+          };
         },
-      }),
+      },
     ],
   },
   logger:
