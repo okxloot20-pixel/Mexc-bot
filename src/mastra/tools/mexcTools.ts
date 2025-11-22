@@ -801,20 +801,24 @@ export const closeShortAtPriceTool = createTool({
 
           for (const pos of positions) {
             const closeSize = context.size || Math.abs((pos as any).holdVol);
-            // positionType: 1 = LONG (closeSide 4), 2 = SHORT (closeSide 2)
-            const closeSide = 2; // Always 2 for SHORT positions
+            // To close SHORT position we SELL (side 2) at best ask price
+            const closeSide: 1 | 2 | 3 | 4 = 2; // Side 2 = SELL to close SHORT
 
-            logger?.info(`📍 Closing SHORT at price`, { symbol, price: context.price, size: closeSize });
+            logger?.info(`📍 Closing SHORT at best ask price`, { symbol, price: context.price, size: closeSize });
+            logger?.info(`🎯 ТОЧНАЯ ЦЕНА ДЛЯ MEXC API: ${context.price} (тип: ${typeof context.price})`);
 
             try {
-              await client.submitOrder({
+              const orderParams = {
                 symbol,
                 side: closeSide,
                 vol: closeSize,
-                type: 1, // Limit order
-                price: context.price,
+                type: 5, // Market order to get best ask price
+                price: 0,
                 openType: 2,
-              });
+              };
+              logger?.info(`📤 Отправляю ордер MARKET по best ask:`, orderParams);
+              
+              await client.submitOrder(orderParams);
               results.push(`✅ Аккаунт ${account.accountNumber}: SHORT закрыта по ${context.price}, ${closeSize} контрактов`);
             } catch (submitError: any) {
               logger?.error(`❌ Submit order error`, { error: submitError });
