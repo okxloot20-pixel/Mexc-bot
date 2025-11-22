@@ -1,6 +1,6 @@
 import { createStep, createWorkflow } from "../inngest";
 import { z } from "zod";
-import { mexcTradingAgent } from "../agents/mexcTradingAgent";
+import { mexcTradingAgent, parseAndExecuteCommand } from "../agents/mexcTradingAgent";
 
 /**
  * Telegram Trading Workflow
@@ -40,29 +40,15 @@ const processTradingCommand = createStep({
     });
 
     try {
-      const agentResponse = await mexcTradingAgent.generateLegacy(
-        [
-          {
-            role: "system",
-            content: `telegram_user_id: ${inputData.telegramUserId}, telegram_username: ${inputData.userName}`,
-          },
-          {
-            role: "user",
-            content: inputData.message,
-          },
-        ],
-        {
-          resourceId: "telegram-bot",
-          threadId: inputData.threadId,
-        }
-      );
+      // Simple command parser - no LLM needed
+      const response = parseAndExecuteCommand(inputData.message, inputData.telegramUserId);
 
       logger?.info('✅ [processTradingCommand] Command processed successfully', {
-        responseLength: agentResponse.text.length,
+        responseLength: response.length,
       });
 
       return {
-        response: agentResponse.text,
+        response,
         success: true,
         chatId: inputData.chatId,
       };

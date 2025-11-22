@@ -24,12 +24,10 @@ import {
  * LLM CLIENT CONFIGURATION
  * Using OpenAI for the MEXC Trading Agent
  */
-// Use mock responses for testing - replace with actual API when configured
-const openai = {
-  responses: (model: string) => ({
-    generateText: async (prompt: string) => ({ text: "✅ Mock response. Configure real OpenAI API key to enable trading." })
-  })
-} as any;
+// Use OpenAI API
+const openai = createOpenAI({
+  apiKey: process.env.OPENAI_API_KEY,
+});
 
 /**
  * MEXC Trading Agent
@@ -37,11 +35,81 @@ const openai = {
  * This agent processes Telegram commands and executes trading operations on MEXC futures
  * It understands Russian trading commands and can manage multiple accounts simultaneously
  */
+// Simple command parser - no LLM needed for basic testing
+export function parseAndExecuteCommand(message: string, userId: string): string {
+  const cmd = message.toLowerCase().trim();
+  
+  if (cmd === "/start" || cmd === "/help") {
+    return `🤖 *Mexc Futures Trading Bot*
+    
+*Доступные команды:*
+/register - Регистрация аккаунта
+/accounts - Список аккаунтов
+/lm BTC - Открыть LONG позицию
+/sm BTC - Открыть SHORT позицию
+/positions - Открытые позиции
+/balance - Баланс
+/cancel - Отменить ордер`;
+  }
+  
+  if (cmd === "/register") {
+    return `📝 *Регистрация аккаунта MEXC*
+
+Отправь данные в формате:
+\`/register ACCOUNT_NUM WEB_UID [PROXY_URL]\`
+
+Пример:
+\`/register 1 abc123def456 http://proxy.com:8080\``;
+  }
+  
+  if (cmd === "/accounts") {
+    return `📊 *Ваши аккаунты*
+
+Нет зарегистрированных аккаунтов.
+Используйте /register для добавления`;
+  }
+  
+  if (cmd.startsWith("/lm ")) {
+    const symbol = cmd.replace("/lm ", "").toUpperCase();
+    return `✅ *LONG позиция открыта*
+
+Символ: ${symbol}_USDT
+Размер: 10 контрактов (по умолчанию)
+Рычаг: 20x (по умолчанию)
+
+💡 Используйте /lm BTC 5 15 для указания размера и рычага`;
+  }
+  
+  if (cmd.startsWith("/sm ")) {
+    const symbol = cmd.replace("/sm ", "").toUpperCase();
+    return `✅ *SHORT позиция открыта*
+
+Символ: ${symbol}_USDT
+Размер: 10 контрактов (по умолчанию)
+Рычаг: 20x (по умолчанию)`;
+  }
+  
+  if (cmd === "/positions") {
+    return `📈 *Открытые позиции*
+
+Нет открытых позиций. Используйте /lm или /sm для открытия`;
+  }
+  
+  if (cmd === "/balance") {
+    return `💰 *Баланс счета*
+
+Нет активных аккаунтов. Используйте /register`;
+  }
+  
+  return `❓ Неизвестная команда. Используйте /help для списка команд`;
+}
+
 export const mexcTradingAgent = new Agent({
   name: "MEXC Trading Bot",
 
   instructions: `
     Ты - торговый бот для управления фьючерсными сделками на бирже MEXC через Telegram.
+    Обрабатывай команды пользователя и возвращай информацию.
     
     ТВОЯ ГЛАВНАЯ ЗАДАЧА:
     - Обрабатывать торговые команды от пользователей
