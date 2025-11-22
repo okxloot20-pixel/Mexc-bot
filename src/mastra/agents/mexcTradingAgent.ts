@@ -143,11 +143,11 @@ async function getBestAskPrice(symbol: string): Promise<number | null> {
   }
 }
 
-// Helper: Get best bid price from MEXC orderbook (for closing SHORT positions) - returns STRING to preserve precision
+// Helper: Get second ask price from MEXC orderbook (for closing SHORT positions) - returns STRING to preserve precision
 async function getSecondAskPrice(symbol: string): Promise<string | null> {
   try {
     const logger = globalMastra?.getLogger();
-    logger?.info(`📊 Fetching best BID price (BEST BUY price for closing SHORT) for ${symbol}`);
+    logger?.info(`📊 Fetching second ask price (second SELL price) for ${symbol}`);
     
     // Use correct MEXC API endpoint for depth/orderbook
     const response = await fetch(`https://api.mexc.com/api/v3/depth?symbol=${symbol}&limit=10`);
@@ -157,24 +157,24 @@ async function getSecondAskPrice(symbol: string): Promise<string | null> {
     logger?.info(`📊 All bids: ${JSON.stringify(data.bids?.slice(0, 10))}`);
     logger?.info(`📊 All asks: ${JSON.stringify(data.asks?.slice(0, 10))}`);
     
-    // Check if response has bids array with at least 1 element
-    if (Array.isArray(data.bids) && data.bids.length > 0) {
-      // Use bids[0] = best (highest) bid price for closing SHORT
-      // When closing SHORT via limit BUY order, we want best BID (highest price buyers willing to pay)
+    // Check if response has asks array with at least 2 elements
+    if (Array.isArray(data.asks) && data.asks.length > 1) {
+      // Use asks[1] = second best ask price (2nd lowest seller price)
+      // When closing SHORT, we want 2nd best ask which provides balance between price and execution
       // Keep as STRING to preserve precision for MEXC API
-      const bestBidRaw = data.bids[0][0];
-      const bestBidNumeric = parseFloat(bestBidRaw);
-      logger?.info(`💰 Best BID found at bids[0] (RAW STRING): "${bestBidRaw}"`);
-      logger?.info(`💰 Best BID (numeric): ${bestBidNumeric}`);
-      logger?.info(`🔍 DEBUG bids[0]="${data.bids[0][0]}", asks[0]="${data.asks[0]?.[0] || 'N/A'}"`);
-      return bestBidRaw; // Return STRING not number
+      const secondAskRaw = data.asks[1][0];
+      const secondAskNumeric = parseFloat(secondAskRaw);
+      logger?.info(`💰 Second ask found at asks[1] (RAW STRING): "${secondAskRaw}"`);
+      logger?.info(`💰 Second ask (numeric): ${secondAskNumeric}`);
+      logger?.info(`🔍 DEBUG asks[0]="${data.asks[0][0]}", asks[1]="${data.asks[1][0]}"`);
+      return secondAskRaw; // Return STRING not number
     }
     
-    logger?.error(`❌ Not enough bids in API response for ${symbol}`);
+    logger?.error(`❌ Not enough asks in API response for ${symbol}`);
     return null;
   } catch (error: any) {
     const logger = globalMastra?.getLogger();
-    logger?.error(`❌ Error getting best bid price for ${symbol}`, { error: error.message });
+    logger?.error(`❌ Error getting second ask price for ${symbol}`, { error: error.message });
     return null;
   }
 }
@@ -367,28 +367,28 @@ U_ID: ${uId.substring(0, 30)}...
     return `✅ *SHORT лимит по 2nd bid ${secondBidPrice}*\n\n${result}`;
   }
   
-  // Close SHORT limit at best ask price from orderbook
+  // Close SHORT limit at second ask price from orderbook
   if (cmd.startsWith("/closebs")) {
     const parts = message.trim().split(/\s+/);
     const symbol = parts[1] ? parts[1].toUpperCase() : "BTC";
     const size = parts[2] ? parseInt(parts[2]) : undefined;
     
-    // Get best ask price from orderbook (API requires format without underscore)
-    // Best ask = lowest seller price = cheapest to buy back for closing SHORT
+    // Get second ask price from orderbook (API requires format without underscore)
+    // Second ask = 2nd lowest seller price = better balance between price and execution
     const apiSymbol = `${symbol}USDT`;
-    const bestAskPrice = await getSecondAskPrice(apiSymbol);
+    const secondAskPrice = await getSecondAskPrice(apiSymbol);
     
-    if (bestAskPrice === null) {
+    if (secondAskPrice === null) {
       return `❌ Не удалось получить цену из стакана для ${apiSymbol}`;
     }
     
     const result = await executeToolDirect(closeShortAtPriceTool, {
       telegramUserId: userId,
       symbol,
-      price: bestAskPrice,
+      price: secondAskPrice,
       size,
     });
-    return `✅ *SHORT закрывается по best ask ${bestAskPrice}*\n\n${result}`;
+    return `✅ *SHORT закрывается по 2nd ask ${secondAskPrice}*\n\n${result}`;
   }
   
   // Close position
