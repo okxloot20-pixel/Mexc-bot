@@ -302,27 +302,27 @@ U_ID: ${uId.substring(0, 30)}...
     return `✅ *SHORT лимит по best bid ${bestBidPrice}*\n\n${result}`;
   }
   
-  // Close SHORT limit at best ask price from orderbook
+  // Close SHORT limit at best bid price from orderbook
   if (cmd.startsWith("/closebs")) {
     const parts = message.trim().split(/\s+/);
     const symbol = parts[1] ? parts[1].toUpperCase() : "BTC";
     const size = parts[2] ? parseInt(parts[2]) : undefined;
     
-    // Get best ask price from orderbook (API requires format without underscore)
+    // Get best bid price from orderbook (API requires format without underscore)
     const apiSymbol = `${symbol}USDT`;
-    const bestAskPrice = await getBestAskPrice(apiSymbol);
+    const bestBidPrice = await getBestBidPrice(apiSymbol);
     
-    if (bestAskPrice === null) {
+    if (bestBidPrice === null) {
       return `❌ Не удалось получить цену из стакана для ${apiSymbol}`;
     }
     
     const result = await executeToolDirect(closeShortAtPriceTool, {
       telegramUserId: userId,
       symbol,
-      price: bestAskPrice,
+      price: bestBidPrice,
       size,
     });
-    return `✅ *SHORT закрывается по best ask ${bestAskPrice}*\n\n${result}`;
+    return `✅ *SHORT закрывается по best bid ${bestBidPrice}*\n\n${result}`;
   }
   
   // Close position

@@ -801,25 +801,27 @@ export const closeShortAtPriceTool = createTool({
 
           for (const pos of positions) {
             const closeSize = context.size || Math.abs((pos as any).holdVol);
-            // To close SHORT position we SELL (side 2) at best ask price
+            // To close SHORT position we SELL (side 2) at best bid price (limit order)
             const closeSide: 1 | 2 | 3 | 4 = 2; // Side 2 = SELL to close SHORT
 
-            logger?.info(`📍 Closing SHORT at best ask price`, { symbol, price: context.price, size: closeSize });
+            logger?.info(`📍 Closing SHORT at best bid price (limit)`, { symbol, price: context.price, size: closeSize });
             logger?.info(`🎯 ТОЧНАЯ ЦЕНА ДЛЯ MEXC API: ${context.price} (тип: ${typeof context.price})`);
 
             try {
+              const orderType: 1 | 2 | 3 | 4 | 5 | 6 = 1; // Limit order
+              const orderOpenType: 1 | 2 = 2;
               const orderParams = {
                 symbol,
                 side: closeSide,
                 vol: closeSize,
-                type: 5, // Market order to get best ask price
-                price: 0,
-                openType: 2,
+                type: orderType, // Limit order at best bid price
+                price: context.price,
+                openType: orderOpenType,
               };
-              logger?.info(`📤 Отправляю ордер MARKET по best ask:`, orderParams);
+              logger?.info(`📤 Отправляю лимит-ордер по best bid:`, orderParams);
               
               await client.submitOrder(orderParams);
-              results.push(`✅ Аккаунт ${account.accountNumber}: SHORT закрыта по ${context.price}, ${closeSize} контрактов`);
+              results.push(`✅ Аккаунт ${account.accountNumber}: SHORT закрыта лимиткой по ${context.price}, ${closeSize} контрактов`);
             } catch (submitError: any) {
               logger?.error(`❌ Submit order error`, { error: submitError });
               throw submitError;
