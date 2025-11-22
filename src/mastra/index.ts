@@ -223,51 +223,92 @@ export const mastra = new Mastra({
             
             try {
               const payload = await c.req.json();
+              
+              console.log("🔍 [TELEGRAM WEBHOOK RECEIVED]", JSON.stringify(payload));
+              logger?.debug("🔍 [Telegram] Full payload received", JSON.stringify(payload, null, 2));
+
               const message = payload.message?.text || "";
               const userId = String(payload.message?.from?.id || "");
-              const chatId = payload.message?.chat?.id;
+              let chatId = payload.message?.chat?.id;
               const username = payload.message?.from?.username || "unknown";
 
-              logger?.info("📱 [Telegram] Received message", {
+              console.log(`📱 Message: "${message}", ChatID: ${chatId}, UserID: ${userId}`);
+              logger?.info("📱 [Telegram] Parsed message", {
                 message,
                 userId,
                 chatId,
+                chatIdType: typeof chatId,
                 username,
               });
 
+              if (!chatId) {
+                logger?.warn("⚠️ [Telegram] No chat ID found, skipping response");
+                return c.text("OK", 200);
+              }
+
               // Parse and execute command
               const response = parseAndExecuteCommand(message, userId);
+              console.log(`✅ Generated response (${response.length} chars)`);
 
               // Send response back to Telegram
-              if (chatId && process.env.TELEGRAM_BOT_TOKEN) {
-                const apiUrl = `https://api.telegram.org/bot${process.env.TELEGRAM_BOT_TOKEN}/sendMessage`;
+              if (process.env.TELEGRAM_BOT_TOKEN) {
+                const botToken = process.env.TELEGRAM_BOT_TOKEN;
+                const apiUrl = `https://api.telegram.org/bot${botToken}/sendMessage`;
+                console.log(`🚀 Sending to Telegram API for chat ${chatId}...`);
                 
-                logger?.info("📤 [Telegram] Sending response", { chatId, responseLength: response.length });
+                const payload = {
+                  chat_id: chatId,
+                  text: response,
+                };
+
+                logger?.info("📤 [Telegram] Sending request to Telegram API", {
+                  url: apiUrl.substring(0, 50) + "...",
+                  chatId,
+                  responseLength: response.length,
+                });
 
                 const apiResponse = await fetch(apiUrl, {
                   method: "POST",
                   headers: { "Content-Type": "application/json" },
-                  body: JSON.stringify({
-                    chat_id: chatId,
-                    text: response,
-                  }),
+                  body: JSON.stringify(payload),
                 });
 
-                const apiData = await apiResponse.json();
+                const responseText = await apiResponse.text();
+                console.log(`📡 Telegram API Status: ${apiResponse.status} - ${responseText.substring(0, 150)}`);
                 
+                let apiData: any = {};
+                try {
+                  apiData = JSON.parse(responseText);
+                } catch (e) {
+                  apiData = { text: responseText };
+                }
+                
+                logger?.info("📡 [Telegram] API Response", {
+                  status: apiResponse.status,
+                  statusText: apiResponse.statusText,
+                  ok: apiResponse.ok,
+                  response: responseText.substring(0, 200),
+                });
+
                 if (apiResponse.ok) {
+                  console.log("✅ Message sent to Telegram successfully!");
                   logger?.info("✅ [Telegram] Response sent successfully");
                 } else {
+                  console.log("❌ Failed to send to Telegram:", apiData.description || apiResponse.statusText);
                   logger?.error("❌ [Telegram] Failed to send response", {
                     error: apiData.description || apiResponse.statusText,
+                    response: responseText,
                   });
                 }
+              } else {
+                logger?.warn("⚠️ [Telegram] TELEGRAM_BOT_TOKEN not configured");
               }
 
               return c.text("OK", 200);
             } catch (error: any) {
               logger?.error("❌ [Telegram] Webhook error", {
                 error: error.message,
+                stack: error.stack,
               });
               return c.text("OK", 200); // Return OK even on error to prevent Telegram retries
             }
