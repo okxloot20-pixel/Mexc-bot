@@ -553,19 +553,28 @@ export const getBalanceTool = createTool({
           const client = createMexcClient(account.uId);
           const asset = await client.getAccountAsset("USDT");
           
-          // Extract balance from nested data structure
+          logger?.info(`📋 Raw asset response for account ${account.accountNumber}:`, JSON.stringify(asset, null, 2));
+          
+          // Extract balance from various possible structures
           let balance = 0;
+          
           if (asset && typeof asset === 'object') {
-            if ((asset as any).data && (asset as any).data.availableBalance) {
+            // Try different possible paths
+            if ((asset as any).data?.availableBalance !== undefined) {
               balance = (asset as any).data.availableBalance;
-            } else if ((asset as any).availableBalance) {
+            } else if ((asset as any).data?.balance !== undefined) {
+              balance = (asset as any).data.balance;
+            } else if ((asset as any).availableBalance !== undefined) {
               balance = (asset as any).availableBalance;
-            } else if ((asset as any).balance) {
+            } else if ((asset as any).balance !== undefined) {
               balance = (asset as any).balance;
+            } else if ((asset as any).frozen !== undefined) {
+              // Some APIs return frozen + available separately
+              balance = ((asset as any).available || 0) + ((asset as any).frozen || 0);
             }
           }
           
-          logger?.info(`💵 Account balance`, { accountNumber: account.accountNumber, balance });
+          logger?.info(`💵 Extracted balance for account ${account.accountNumber}`, { balance });
 
           results.push(
             `✅ *Аккаунт ${account.accountNumber}*\n` +
