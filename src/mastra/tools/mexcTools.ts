@@ -461,20 +461,25 @@ export const closePositionTool = createTool({
             // closeSide: 4 = close LONG, 2 = close SHORT
             const closeSide = (pos as any).positionType === 1 ? 4 : 2;
 
-            // Capture PnL data before closing
+            // Capture PnL data before closing (with commission deduction)
             const pnlUsd = (pos as any).realised || 0;
             const pnlPercent = ((pos as any).profitRatio || 0) * 100;
             
+            // Account for closing commission (1% of position value)
+            const markPrice = (pos as any).markPrice || (pos as any).currentPrice || 1;
+            const closingCommission = (closeSize * markPrice * 0.01);
+            const pnlAfterCommission = pnlUsd - closingCommission;
+            
             accountsPnlData.push({
               accountNumber: account.accountNumber,
-              pnlUsd,
+              pnlUsd: pnlAfterCommission,
               pnlPercent,
             });
             
-            totalPnlUsd += pnlUsd;
+            totalPnlUsd += pnlAfterCommission;
             totalPnlPercent += pnlPercent;
 
-            logger?.info(`📍 Closing position`, { symbol, closeSize, closeSide, positionType: (pos as any).positionType, pnlUsd, pnlPercent });
+            logger?.info(`📍 Closing position`, { symbol, closeSize, closeSide, positionType: (pos as any).positionType, pnlUsd: pnlAfterCommission, commission: closingCommission, pnlPercent });
 
             await client.submitOrder({
               symbol,
@@ -485,8 +490,8 @@ export const closePositionTool = createTool({
               openType: 2,
             });
 
-            const pnlEmoji = pnlUsd > 0 ? "📈" : "📉";
-            results.push(`✅ Аккаунт ${account.accountNumber}: закрыта позиция ${closeSize} контрактов | ${pnlEmoji} ${pnlUsd > 0 ? "+" : ""}${pnlUsd.toFixed(2)}$ | ${pnlPercent > 0 ? "+" : ""}${pnlPercent.toFixed(2)}%`);
+            const pnlEmoji = pnlAfterCommission > 0 ? "📈" : "📉";
+            results.push(`✅ Аккаунт ${account.accountNumber}: закрыта позиция ${closeSize} контрактов | ${pnlEmoji} ${pnlAfterCommission > 0 ? "+" : ""}${pnlAfterCommission.toFixed(2)}$ | ${pnlPercent > 0 ? "+" : ""}${pnlPercent.toFixed(2)}% | комиссия: -${closingCommission.toFixed(2)}$`);
           }
         } catch (error: any) {
           logger?.error(`❌ Error closing position for account ${account.accountNumber}`, { error: error.message });
@@ -563,10 +568,16 @@ export const getPositionsTool = createTool({
             // Calculate PnL in USD and percentage
             const pnlUsd = (pos as any).realised || 0;
             const pnlPercent = ((pos as any).profitRatio || 0) * 100;
-            const pnlEmoji = pnlUsd > 0 ? "📈" : "📉";
             const holdVol = (pos as any).holdVol || 0;
             
-            results.push(`${pnlEmoji} ${(pos as any).symbol} | ${sideText} ${holdVol}кт | ${pnlUsd > 0 ? "+" : ""}${pnlUsd.toFixed(2)}$ | ${pnlPercent > 0 ? "+" : ""}${pnlPercent.toFixed(2)}%`);
+            // Account for closing commission (1% of position value)
+            const markPrice = (pos as any).markPrice || (pos as any).currentPrice || 1;
+            const closingCommission = (holdVol * markPrice * 0.01);
+            const pnlAfterCommission = pnlUsd - closingCommission;
+            
+            const pnlEmoji = pnlAfterCommission > 0 ? "📈" : "📉";
+            
+            results.push(`${pnlEmoji} ${(pos as any).symbol} | ${sideText} ${holdVol}кт | ${pnlAfterCommission > 0 ? "+" : ""}${pnlAfterCommission.toFixed(2)}$ | ${pnlPercent > 0 ? "+" : ""}${pnlPercent.toFixed(2)}% | комиссия: -${closingCommission.toFixed(2)}$`);
           }
         } catch (error: any) {
           logger?.error(`❌ [getPositionsTool] Error fetching positions for account ${account.accountNumber}`, { error: error.message });

@@ -94,11 +94,22 @@ async function getPositionPnLForSymbol(userId: string, symbol: string): Promise<
         if (position) {
           const pnlUsd = (position as any).realised || 0;
           const pnlPercent = ((position as any).profitRatio || 0) * 100;
-          const pnlEmoji = pnlUsd > 0 ? "📈" : "📉";
+          
+          // Account for closing commission (1% of position value)
+          // Estimate: holdVol * averagePrice (use currentPrice as proxy)
+          const holdVol = (position as any).holdVol || 0;
+          const markPrice = (position as any).markPrice || (position as any).currentPrice || 1;
+          const closingCommission = (holdVol * markPrice * 0.01);
+          
+          // Net PnL after closing commission
+          const pnlAfterCommission = pnlUsd - closingCommission;
+          const pnlAfterPercent = (pnlPercent * pnlUsd / (pnlUsd + closingCommission)) || pnlPercent;
+          
+          const pnlEmoji = pnlAfterCommission > 0 ? "📈" : "📉";
           const sideText = (position as any).positionType === 1 ? "LONG" : "SHORT";
           
-          pnlLines.push(`${pnlEmoji} ${sideText}: ${pnlUsd > 0 ? "+" : ""}${pnlUsd.toFixed(2)}$ (${pnlPercent > 0 ? "+" : ""}${pnlPercent.toFixed(2)}%)`);
-          totalPnlUsd += pnlUsd;
+          pnlLines.push(`${pnlEmoji} ${sideText}: ${pnlAfterCommission > 0 ? "+" : ""}${pnlAfterCommission.toFixed(2)}$ (${pnlAfterPercent > 0 ? "+" : ""}${pnlAfterPercent.toFixed(2)}%) | комиссия: -${closingCommission.toFixed(2)}$`);
+          totalPnlUsd += pnlAfterCommission;
           countPositions++;
         }
       } catch (error: any) {
