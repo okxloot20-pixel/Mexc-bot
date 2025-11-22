@@ -280,29 +280,29 @@ U_ID: ${uId.substring(0, 30)}...
     }
   }
   
-  // Open LONG limit at second bid price from orderbook
+  // Open LONG limit at second ask price from orderbook
   if (cmd.startsWith("/lb")) {
     const parts = message.trim().split(/\s+/);
     const symbol = parts[1] ? parts[1].toUpperCase() : "BTC";
     const size = parts[2] ? parseInt(parts[2]) : undefined;
     const leverage = parts[3] ? parseInt(parts[3]) : undefined;
     
-    // Get second bid price from orderbook (API requires format without underscore)
+    // Get second ask price from orderbook (API requires format without underscore)
     const apiSymbol = `${symbol}USDT`;
-    const secondBidPrice = await getSecondBidPrice(apiSymbol);
+    const secondAskPrice = await getSecondAskPrice(apiSymbol);
     
-    if (secondBidPrice === null) {
+    if (secondAskPrice === null) {
       return `❌ Не удалось получить цену из стакана для ${apiSymbol}`;
     }
     
     const result = await executeToolDirect(openLongLimitTool, {
       telegramUserId: userId,
       symbol,
-      price: secondBidPrice,
+      price: parseFloat(secondAskPrice),
       size,
       leverage,
     });
-    return `✅ *LONG лимит по 2nd bid ${secondBidPrice}*\n\n${result}`;
+    return `✅ *LONG лимит по 2nd ask ${secondAskPrice}*\n\n${result}`;
   }
   
   // Open LONG market
