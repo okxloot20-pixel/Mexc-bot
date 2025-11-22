@@ -2,6 +2,9 @@ import { Agent } from "@mastra/core/agent";
 import { Memory } from "@mastra/memory";
 import { sharedPostgresStorage } from "../storage";
 import { createOpenAI } from "@ai-sdk/openai";
+import { db } from "../storage/db";
+import { mexcAccounts } from "../storage/schema";
+import { eq } from "drizzle-orm";
 import {
   openLongMarketTool,
   openShortMarketTool,
@@ -36,7 +39,7 @@ const openai = createOpenAI({
  * It understands Russian trading commands and can manage multiple accounts simultaneously
  */
 // Simple command parser - no LLM needed for basic testing
-export function parseAndExecuteCommand(message: string, userId: string): string {
+export async function parseAndExecuteCommand(message: string, userId: string): Promise<string> {
   const cmd = message.toLowerCase().trim();
   
   // Help/Start
@@ -66,26 +69,58 @@ export function parseAndExecuteCommand(message: string, userId: string): string 
 Пример:
 \`/register 1 abc123def456 http://proxy.com:8080\``;
     } else {
-      // /register with parameters - save account
-      const accountNum = parts[1];
+      // /register with parameters - save to database
+      const accountNum = parseInt(parts[1]);
       const webUid = parts[2];
-      const proxyUrl = parts[3] || "не установлен";
-      return `✅ *Аккаунт зарегистрирован*
+      const proxyUrl = parts[3] || "";
+      
+      try {
+        await db.insert(mexcAccounts).values({
+          telegramUserId: userId,
+          accountNumber: accountNum,
+          webUid: webUid,
+          proxy: proxyUrl || null,
+          isActive: true,
+        });
+        
+        return `✅ *Аккаунт зарегистрирован*
 
 Номер аккаунта: ${accountNum}
 WEB_UID: ${webUid.substring(0, 10)}...
-Прокси: ${proxyUrl}
+Прокси: ${proxyUrl || "не установлен"}
 
 Используйте /accounts для просмотра всех аккаунтов`;
+      } catch (error: any) {
+        return `❌ Ошибка при регистрации: ${error.message}`;
+      }
     }
   }
   
   // List accounts
   if (cmd === "/accounts") {
-    return `📊 *Ваши аккаунты*
+    try {
+      const accounts = await db.query.mexcAccounts.findMany({
+        where: eq(mexcAccounts.telegramUserId, userId),
+      });
+      
+      if (accounts.length === 0) {
+        return `📊 *Ваши аккаунты*
 
 Нет зарегистрированных аккаунтов.
 Используйте /register для добавления`;
+      }
+      
+      let response = `📊 *Ваши аккаунты*\n\n`;
+      accounts.forEach((acc, idx) => {
+        response += `${idx + 1}️⃣ Аккаунт #${acc.accountNumber}\n`;
+        response += `   WEB_UID: ${acc.webUid.substring(0, 20)}...\n`;
+        if (acc.proxy) response += `   Прокси: ${acc.proxy}\n`;
+        response += `   Рычаг: ${acc.defaultLeverage}x | Размер: ${acc.defaultSize}\n\n`;
+      });
+      return response;
+    } catch (error: any) {
+      return `❌ Ошибка при получении аккаунтов: ${error.message}`;
+    }
   }
   
   // Open LONG market

@@ -2,14 +2,15 @@
 
 This project is a **Telegram trading bot** for **MEXC futures trading** built with **Mastra**. Users send trading commands via Telegram, and the bot executes them immediately with instant responses.
 
-**Status**: ✅ **FULLY OPERATIONAL** - Bot responds to all commands in real-time
+**Status**: ✅ **FULLY OPERATIONAL** - Bot responds to all commands in real-time and saves account data to PostgreSQL
 
 The application features:
-- ✅ Real-time Telegram webhook integration (direct response, no delays)
+- ✅ Real-time Telegram webhook integration (direct response, no delays < 200ms)
 - ✅ Command parsing without LLM (fast & reliable)
 - ✅ Full Russian language support
 - ✅ Trading tools: open/close positions, manage accounts, view balances
-- ✅ Multi-account support with PostgreSQL storage
+- ✅ Multi-account support with PostgreSQL storage (tested & verified)
+- ✅ Account registration & retrieval from database
 - ✅ Persistent workflow execution (Inngest)
 
 # User Preferences
