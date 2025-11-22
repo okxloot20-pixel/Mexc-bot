@@ -520,7 +520,29 @@ U_ID: ${uId.substring(0, 30)}...
     return `✅ *Все ордера отменены*`;
   }
   
-  return `❓ Неизвестная команда. Используйте /help для списка команд`;
+  // Show menu for empty message or unknown command
+  return JSON.stringify({
+    type: "menu",
+    text: "🤖 *Mexc Futures Trading Bot*",
+    keyboard: [
+      [
+        { text: "📈 Трейдинг", callback_data: "trading" },
+        { text: "📊 Позиции", callback_data: "positions" }
+      ],
+      [
+        { text: "👤 Аккаунт", callback_data: "account" },
+        { text: "📦 Ордеры", callback_data: "orders" }
+      ],
+      [
+        { text: "🎯 Подписка", callback_data: "subscription" }
+      ],
+      [
+        { text: "🚨 Сигналы", callback_data: "signals" },
+        { text: "⚙️ Настройки", callback_data: "settings" },
+        { text: "ℹ️ Help", callback_data: "help" }
+      ]
+    ]
+  });
 }
 
 export const mexcTradingAgent = new Agent({
