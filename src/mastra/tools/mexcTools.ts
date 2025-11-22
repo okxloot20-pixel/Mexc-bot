@@ -20,16 +20,50 @@ function createMexcClient(uId: string): MexcFuturesClient {
   });
 }
 
-// Helper: Get max contract limit for a symbol
+// Helper: Get max contract limit for a symbol (from DB or MEXC API)
 async function getSymbolLimit(symbol: string, logger?: any): Promise<number> {
   try {
+    // Try to get from database first
     const limit = await db.query.symbolLimits.findFirst({
       where: eq(symbolLimits.symbol, symbol),
     });
     
-    const maxContracts = limit?.maxContracts || 100; // Default to 100 if not found
-    logger?.info(`📊 Symbol ${symbol} max contracts: ${maxContracts}`);
-    return maxContracts;
+    if (limit) {
+      logger?.info(`📊 Symbol ${symbol} max contracts (from DB): ${limit.maxContracts}`);
+      return limit.maxContracts;
+    }
+    
+    // If not in DB, fetch from MEXC API
+    logger?.info(`🔍 Symbol ${symbol} not in DB, fetching from MEXC API...`);
+    const response = await fetch(`https://contract.mexc.com/api/v1/contract/detail?symbol=${symbol}`);
+    const data = await response.json();
+    
+    if (data.success && data.data) {
+      // Try different property names for max position
+      const maxPos = data.data.maxPosition 
+        || data.data.maxOpenCount 
+        || data.data.positionOpenLimit 
+        || 100;
+      
+      const maxContracts = parseInt(maxPos) || 100;
+      
+      // Cache it in DB for future use
+      try {
+        await db.insert(symbolLimits).values({
+          symbol,
+          maxContracts,
+        }).onConflictDoNothing();
+        logger?.info(`💾 Cached ${symbol} limit ${maxContracts} to DB`);
+      } catch (e) {
+        logger?.warn(`⚠️ Could not cache to DB`, { error: (e as any).message });
+      }
+      
+      logger?.info(`📊 Symbol ${symbol} max contracts (from MEXC): ${maxContracts}`);
+      return maxContracts;
+    }
+    
+    logger?.warn(`⚠️ Could not fetch ${symbol} from MEXC API, using default 100`);
+    return 100; // Default to 100 if API fails
   } catch (error: any) {
     logger?.warn(`⚠️ Error getting symbol limit for ${symbol}`, { error: error.message });
     return 100; // Default to 100
