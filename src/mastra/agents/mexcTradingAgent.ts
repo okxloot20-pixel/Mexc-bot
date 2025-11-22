@@ -143,6 +143,35 @@ async function getBestAskPrice(symbol: string): Promise<number | null> {
   }
 }
 
+// Helper: Get second ask price from MEXC orderbook (second price to sell)
+async function getSecondAskPrice(symbol: string): Promise<number | null> {
+  try {
+    const logger = globalMastra?.getLogger();
+    logger?.info(`📊 Fetching second ask price (second SELL price) for ${symbol}`);
+    
+    // Use correct MEXC API endpoint for depth/orderbook
+    const response = await fetch(`https://api.mexc.com/api/v3/depth?symbol=${symbol}&limit=5`);
+    const data = await response.json();
+    
+    logger?.info(`📊 Orderbook asks: ${JSON.stringify(data.asks?.slice(0, 3))}`);
+    
+    // Check if response has asks array with at least 2 elements
+    if (Array.isArray(data.asks) && data.asks.length > 1) {
+      // Second element is second best ask
+      const secondAsk = parseFloat(data.asks[1][0]);
+      logger?.info(`💰 Second ask found: ${secondAsk} for ${symbol}`);
+      return secondAsk;
+    }
+    
+    logger?.error(`❌ Not enough asks in API response for ${symbol}`);
+    return null;
+  } catch (error: any) {
+    const logger = globalMastra?.getLogger();
+    logger?.error(`❌ Error getting second ask price for ${symbol}`, { error: error.message });
+    return null;
+  }
+}
+
 // Simple command parser - no LLM needed for basic testing
 export async function parseAndExecuteCommand(message: string, userId: string, mastra?: any): Promise<string> {
   if (mastra) {
@@ -331,27 +360,27 @@ U_ID: ${uId.substring(0, 30)}...
     return `✅ *SHORT лимит по 2nd bid ${secondBidPrice}*\n\n${result}`;
   }
   
-  // Close SHORT limit at best bid price from orderbook
+  // Close SHORT limit at second ask price from orderbook
   if (cmd.startsWith("/closebs")) {
     const parts = message.trim().split(/\s+/);
     const symbol = parts[1] ? parts[1].toUpperCase() : "BTC";
     const size = parts[2] ? parseInt(parts[2]) : undefined;
     
-    // Get best bid price from orderbook (API requires format without underscore)
+    // Get second ask price from orderbook (API requires format without underscore)
     const apiSymbol = `${symbol}USDT`;
-    const bestBidPrice = await getBestBidPrice(apiSymbol);
+    const secondAskPrice = await getSecondAskPrice(apiSymbol);
     
-    if (bestBidPrice === null) {
+    if (secondAskPrice === null) {
       return `❌ Не удалось получить цену из стакана для ${apiSymbol}`;
     }
     
     const result = await executeToolDirect(closeShortAtPriceTool, {
       telegramUserId: userId,
       symbol,
-      price: bestBidPrice,
+      price: secondAskPrice,
       size,
     });
-    return `✅ *SHORT закрывается по best bid ${bestBidPrice}*\n\n${result}`;
+    return `✅ *SHORT закрывается по 2nd ask ${secondAskPrice}*\n\n${result}`;
   }
   
   // Close position
