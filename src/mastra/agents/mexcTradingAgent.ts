@@ -252,10 +252,10 @@ export async function parseAndExecuteCommand(message: string, userId: string, ma
 4️⃣ Скопируй её VALUE (не имя!) - это будет строка вроде: WEB06040d90...
 
 Отправь данные в формате:
-\`/register ACCOUNT_NUM U_ID [PROXY]\`
+/register ACCOUNT_NUM U_ID [PROXY]
 
 Пример:
-\`/register 474 WEB06040d90... http://156.246.187.73:63148\`
+/register 474 WEB06040d90... http://156.246.187.73:63148
 
 ✅ u_id не истекает - один раз скопировал, используй сколько угодно долго!`;
     } else {
