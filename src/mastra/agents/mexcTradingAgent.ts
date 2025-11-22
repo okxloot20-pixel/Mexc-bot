@@ -88,20 +88,20 @@ async function getBestBidPrice(symbol: string): Promise<number | null> {
 async function getBestAskPrice(symbol: string): Promise<number | null> {
   try {
     const logger = globalMastra?.getLogger();
-    logger?.info(`📊 Fetching best ask for ${symbol}`);
+    logger?.info(`📊 Fetching best ask (SELL price) for ${symbol}`);
     
     // Use correct MEXC API endpoint for depth/orderbook
     const response = await fetch(`https://api.mexc.com/api/v3/depth?symbol=${symbol}&limit=5`);
     const data = await response.json();
     
-    logger?.info(`📊 Depth API Response for ${symbol}:`, JSON.stringify(data).substring(0, 300));
+    logger?.info(`📊 Stakan: best BID (buy)=${data.bids?.[0]?.[0]} | best ASK (sell)=${data.asks?.[0]?.[0]}`);
     
     // Check if response has asks array
     if (Array.isArray(data.asks) && data.asks.length > 0) {
       // asks is array of [price, volume] pairs
-      // First element is best ask (lowest price)
+      // First element is best ask = seller's lowest price = price on SALE
       const bestAsk = parseFloat(data.asks[0][0]);
-      logger?.info(`💰 Best ask found: ${bestAsk} for ${symbol}`);
+      logger?.info(`✅ Best ASK (цена на ПРОДАЖУ): ${bestAsk}`);
       return bestAsk;
     }
     
