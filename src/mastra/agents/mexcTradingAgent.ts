@@ -244,20 +244,20 @@ export async function parseAndExecuteCommand(message: string, userId: string, ma
     const parts = message.trim().split(/\s+/);
     if (parts.length === 1) {
       // Just /register - show help
-      return `📝 *Регистрация аккаунта MEXC*
+      return `📝 Регистрация аккаунта MEXC
 
 1️⃣ Открой MEXC в браузере: https://contract.mexc.com
 2️⃣ Открой DevTools (F12) → Application → Cookies
-3️⃣ Найди cookie с именем *u_id* 
-4️⃣ Скопируй её VALUE (не имя!) - это будет строка вроде: WEB06040d90...
+3️⃣ Найди cookie с именем u_id 
+4️⃣ Скопируй её VALUE (не имя!) - это будет строка вроде: WEB06040d90
 
 Отправь данные в формате:
 /register ACCOUNT_NUM U_ID [PROXY]
 
 Пример:
-/register 474 WEB06040d90... http://156.246.187.73:63148
+/register 474 WEB06040d90 http://156.246.187.73:63148
 
-✅ u_id не истекает - один раз скопировал, используй сколько угодно долго!`;
+✅ u_id не истекает`;
     } else {
       // /register with parameters - save to database
       const accountNum = parseInt(parts[1]);
