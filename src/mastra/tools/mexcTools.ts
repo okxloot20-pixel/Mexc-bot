@@ -552,7 +552,20 @@ export const getBalanceTool = createTool({
         try {
           const client = createMexcClient(account.uId);
           const asset = await client.getAccountAsset("USDT");
-          const balance = (asset as any).availableBalance || (asset as any).balance || 0;
+          
+          // Extract balance from nested data structure
+          let balance = 0;
+          if (asset && typeof asset === 'object') {
+            if ((asset as any).data && (asset as any).data.availableBalance) {
+              balance = (asset as any).data.availableBalance;
+            } else if ((asset as any).availableBalance) {
+              balance = (asset as any).availableBalance;
+            } else if ((asset as any).balance) {
+              balance = (asset as any).balance;
+            }
+          }
+          
+          logger?.info(`💵 Account balance`, { accountNumber: account.accountNumber, balance });
 
           results.push(
             `✅ *Аккаунт ${account.accountNumber}*\n` +
@@ -560,6 +573,7 @@ export const getBalanceTool = createTool({
             `   Плечо: ${account.defaultLeverage}x | Размер: ${account.defaultSize}`
           );
         } catch (error: any) {
+          logger?.error(`❌ Error getting balance for account ${account.accountNumber}`, { error: error.message });
           results.push(`❌ Аккаунт ${account.accountNumber}: ${error.message}`);
         }
       }
