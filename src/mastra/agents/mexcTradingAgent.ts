@@ -55,17 +55,40 @@ async function executeToolDirect(tool: any, context: any): Promise<string> {
 // Helper: Get best bid price from MEXC orderbook
 async function getBestBidPrice(symbol: string): Promise<number | null> {
   try {
-    const response = await fetch(`https://contract.mexc.com/api/v1/depth?symbol=${symbol}&limit=20`);
-    const data = await response.json();
+    const logger = globalMastra?.getLogger();
+    logger?.info(`📊 Fetching best bid for ${symbol}`);
+    
+    // Try v1 API first
+    let response = await fetch(`https://contract.mexc.com/api/v1/depth?symbol=${symbol}&limit=20`);
+    let data = await response.json();
+    
+    logger?.info(`📊 API Response for ${symbol}`, JSON.stringify(data).substring(0, 200));
     
     if (data.success && data.data && Array.isArray(data.data.bids) && data.data.bids.length > 0) {
       // bids[0][0] is the best bid price
-      return parseFloat(data.data.bids[0][0]);
+      const bestBid = parseFloat(data.data.bids[0][0]);
+      logger?.info(`💰 Best bid found: ${bestBid} for ${symbol}`);
+      return bestBid;
     }
     
+    // Try alternate endpoint if first fails
+    logger?.warn(`⚠️ No bids in v1 API response, trying websocket data endpoint...`);
+    response = await fetch(`https://contract.mexc.com/api/v1/ticker?symbol=${symbol}`);
+    data = await response.json();
+    
+    logger?.info(`📊 Ticker API Response for ${symbol}`, JSON.stringify(data).substring(0, 200));
+    
+    if (data.success && data.data && data.data.bid) {
+      const bestBid = parseFloat(data.data.bid);
+      logger?.info(`💰 Best bid from ticker: ${bestBid} for ${symbol}`);
+      return bestBid;
+    }
+    
+    logger?.error(`❌ Could not extract best bid from any API endpoint for ${symbol}`);
     return null;
   } catch (error: any) {
-    console.error(`Error getting best bid price for ${symbol}:`, error.message);
+    const logger = globalMastra?.getLogger();
+    logger?.error(`❌ Error getting best bid price for ${symbol}`, { error: error.message, stack: error.stack });
     return null;
   }
 }
