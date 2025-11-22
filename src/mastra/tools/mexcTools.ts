@@ -20,24 +20,29 @@ function createMexcClient(uId: string): MexcFuturesClient {
   });
 }
 
-// Helper: Get contract unit price (USDT per contract)
-// BTC=100, ETH=10, small coins=1
-function getContractUnitPrice(symbol: string): number {
-  const base = symbol.split('_')[0];
-  
-  // Known major coins with their contract values
-  const contractPrices: { [key: string]: number } = {
-    'BTC': 100,
-    'ETH': 10,
-  };
-  
-  // Check if known major coin
-  if (contractPrices[base]) {
-    return contractPrices[base];
+// Helper: Get contract multiplier from MEXC API
+// Each symbol has different multiplier (BTC=100, ETH=10, ARTX=0.01, etc)
+async function getContractMultiplier(symbol: string, logger?: any): Promise<number> {
+  try {
+    // Try to get from MEXC public API
+    const response = await fetch(`https://contract.mexc.com/api/v1/contract/symbols`);
+    const data = await response.json();
+    
+    if (data.success && data.data && Array.isArray(data.data)) {
+      const symbolInfo = data.data.find((s: any) => s.symbol === symbol);
+      if (symbolInfo) {
+        const multiplier = parseFloat(symbolInfo.multiplier || symbolInfo.contractValue || 1);
+        logger?.info(`📊 Symbol ${symbol} multiplier: ${multiplier}`);
+        return multiplier;
+      }
+    }
+    
+    logger?.warn(`⚠️ Could not find multiplier for ${symbol}, using default 1`);
+    return 1;
+  } catch (error: any) {
+    logger?.error('❌ Error fetching contract multiplier', { error: error.message });
+    return 1; // Fallback to 1
   }
-  
-  // Default for smaller coins
-  return 1;
 }
 
 // Helper: Calculate max position size based on balance and leverage
@@ -46,13 +51,14 @@ async function getMaxPositionSize(client: MexcFuturesClient, symbol: string, lev
     const asset = await client.getAccountAsset("USDT");
     const availableBalance = (asset as any).availableBalance || (asset as any).balance || 0;
     
-    const contractUnit = getContractUnitPrice(symbol);
+    // Get the contract multiplier for this specific symbol
+    const multiplier = await getContractMultiplier(symbol, logger);
     
-    // Max size = (balance * leverage) / contractUnitPrice
-    // Example: balance=100 USDT, leverage=20x, BTC contract=100 USD
-    // maxSize = (100 * 20) / 100 = 20 contracts
-    const maxSize = Math.floor((availableBalance * leverage) / contractUnit);
-    logger?.info(`💰 Max position size: ${maxSize} contracts (balance: ${availableBalance} USDT, leverage: ${leverage}x, contract unit: ${contractUnit} USDT)`);
+    // Max size = (balance * leverage) / multiplier
+    // Example: balance=100 USDT, leverage=20x, ARTX multiplier=0.01
+    // maxSize = (100 * 20) / 0.01 = 200,000 contracts
+    const maxSize = Math.floor((availableBalance * leverage) / multiplier);
+    logger?.info(`💰 Max position size: ${maxSize} contracts (balance: ${availableBalance} USDT, leverage: ${leverage}x, multiplier: ${multiplier} USDT/contract)`);
     return Math.max(maxSize, 1); // At least 1 contract
   } catch (error: any) {
     logger?.error('❌ Error calculating max size', { error: error.message });
