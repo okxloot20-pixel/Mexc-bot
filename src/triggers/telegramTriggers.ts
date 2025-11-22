@@ -14,6 +14,8 @@ export type TriggerInfoTelegramOnNewMessage = {
   params: {
     userName: string;
     message: string;
+    telegramUserId: string;
+    chatId: number;
   };
   payload: any;
 };
@@ -42,8 +44,10 @@ export function registerTelegramTrigger({
           await handler(mastra, {
             type: triggerType,
             params: {
-              userName: payload.message.from.username,
-              message: payload.message.text,
+              userName: payload.message.from.username || "unknown",
+              message: payload.message.text || "",
+              telegramUserId: String(payload.message.from.id),
+              chatId: payload.message.chat.id,
             },
             payload,
           } as TriggerInfoTelegramOnNewMessage);

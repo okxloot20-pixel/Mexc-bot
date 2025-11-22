@@ -224,21 +224,19 @@ export const mastra = new Mastra({
           logger?.info("🤖 [Telegram Trigger] Processing message", {
             userName: triggerInfo.params.userName,
             message: triggerInfo.params.message,
+            telegramUserId: triggerInfo.params.telegramUserId,
           });
 
-          const chatId = triggerInfo.payload?.message?.chat?.id;
-          const telegramUserId = String(triggerInfo.payload?.message?.from?.id || '');
-          const messageId = triggerInfo.payload?.message?.message_id;
-          const threadId = `telegram-${telegramUserId}-${Date.now()}`;
+          const threadId = `telegram-${triggerInfo.params.telegramUserId}-${Date.now()}`;
 
           const run = await telegramTradingWorkflow.createRunAsync();
           await run.start({
             inputData: {
               threadId,
               userName: triggerInfo.params.userName,
-              telegramUserId,
+              telegramUserId: triggerInfo.params.telegramUserId,
               message: triggerInfo.params.message,
-              chatId,
+              chatId: triggerInfo.params.chatId,
             },
           });
         },
