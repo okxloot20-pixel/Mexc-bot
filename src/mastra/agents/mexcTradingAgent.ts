@@ -58,37 +58,27 @@ async function getBestBidPrice(symbol: string): Promise<number | null> {
     const logger = globalMastra?.getLogger();
     logger?.info(`📊 Fetching best bid for ${symbol}`);
     
-    // Try v1 API first
-    let response = await fetch(`https://contract.mexc.com/api/v1/depth?symbol=${symbol}&limit=20`);
-    let data = await response.json();
+    // Use correct MEXC API endpoint for depth/orderbook
+    const response = await fetch(`https://api.mexc.com/api/v3/depth?symbol=${symbol}&limit=5`);
+    const data = await response.json();
     
-    logger?.info(`📊 API Response for ${symbol}`, JSON.stringify(data).substring(0, 200));
+    logger?.info(`📊 Depth API Response for ${symbol}:`, JSON.stringify(data).substring(0, 300));
     
-    if (data.success && data.data && Array.isArray(data.data.bids) && data.data.bids.length > 0) {
-      // bids[0][0] is the best bid price
-      const bestBid = parseFloat(data.data.bids[0][0]);
+    // Check if response has bids array
+    if (Array.isArray(data.bids) && data.bids.length > 0) {
+      // bids is array of [price, volume] pairs
+      // First element is best bid (highest price)
+      const bestBid = parseFloat(data.bids[0][0]);
       logger?.info(`💰 Best bid found: ${bestBid} for ${symbol}`);
       return bestBid;
     }
     
-    // Try alternate endpoint if first fails
-    logger?.warn(`⚠️ No bids in v1 API response, trying websocket data endpoint...`);
-    response = await fetch(`https://contract.mexc.com/api/v1/ticker?symbol=${symbol}`);
-    data = await response.json();
-    
-    logger?.info(`📊 Ticker API Response for ${symbol}`, JSON.stringify(data).substring(0, 200));
-    
-    if (data.success && data.data && data.data.bid) {
-      const bestBid = parseFloat(data.data.bid);
-      logger?.info(`💰 Best bid from ticker: ${bestBid} for ${symbol}`);
-      return bestBid;
-    }
-    
-    logger?.error(`❌ Could not extract best bid from any API endpoint for ${symbol}`);
+    logger?.error(`❌ No bids found in API response for ${symbol}`);
+    logger?.error(`📋 Response structure:`, { hasData: !!data, keys: Object.keys(data || {}) });
     return null;
   } catch (error: any) {
     const logger = globalMastra?.getLogger();
-    logger?.error(`❌ Error getting best bid price for ${symbol}`, { error: error.message, stack: error.stack });
+    logger?.error(`❌ Error getting best bid price for ${symbol}`, { error: error.message });
     return null;
   }
 }
