@@ -509,17 +509,21 @@ U_ID: ${uId.substring(0, 30)}...
   }
   
   // Handle menu button clicks
-  if (message === "📈 Трейдинг") {
+  if (message === "📋 Команды") {
     return JSON.stringify({
       type: "keyboard_menu",
-      text: "📈 *Трейдинг*",
+      text: "📋 *Список команд*\n\n/lb SYMBOL - LONG лимит\n/sb SYMBOL - SHORT лимит\n/lm SYMBOL - LONG маркет\n/sm SYMBOL - SHORT маркет\n/close SYMBOL - Закрыть позицию\n/positions - Открытые позиции\n/balance - Баланс\n/register - Регистрация\n/accounts - Мои аккаунты",
       keyboard: [
-        ["🟢 LONG лимит", "🔴 SHORT лимит"],
-        ["🟢 LONG маркет", "🔴 SHORT маркет"],
-        ["❌ Закрыть позицию"],
         ["← Назад"]
       ]
     });
+  }
+  
+  if (message === "📊 Позиции") {
+    const result = await executeToolDirect(getPositionsTool, {
+      telegramUserId: userId,
+    });
+    return result;
   }
   
   if (message === "👤 Аккаунт") {
@@ -534,15 +538,6 @@ U_ID: ${uId.substring(0, 30)}...
     });
   }
   
-  if (message === "📊 Позиции") {
-    return JSON.stringify({
-      type: "keyboard_menu",
-      text: "💼 *Открытые позиции*\n\nОтправь: /positions",
-      keyboard: [
-        ["← Назад"]
-      ]
-    });
-  }
   
   if (message === "📦 Ордеры") {
     return JSON.stringify({
@@ -599,7 +594,7 @@ U_ID: ${uId.substring(0, 30)}...
       type: "keyboard_menu",
       text: "🤖 *Mexc Futures Trading Bot*",
       keyboard: [
-        ["📈 Трейдинг", "📊 Позиции"],
+        ["📋 Команды", "📊 Позиции"],
         ["👤 Аккаунт", "📦 Ордеры"],
         ["🎯 Подписка"],
         ["🚨 Сигналы", "⚙️ Настройки", "ℹ️ Help"]
@@ -612,7 +607,7 @@ U_ID: ${uId.substring(0, 30)}...
     type: "keyboard_menu",
     text: "🤖 *Mexc Futures Trading Bot*",
     keyboard: [
-      ["📈 Трейдинг", "📊 Позиции"],
+      ["📋 Команды", "📊 Позиции"],
       ["👤 Аккаунт", "📦 Ордеры"],
       ["🎯 Подписка"],
       ["🚨 Сигналы", "⚙️ Настройки", "ℹ️ Help"]
