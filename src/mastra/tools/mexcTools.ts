@@ -733,3 +733,91 @@ export const cancelOrdersTool = createTool({
     }
   },
 });
+
+/**
+ * Tool: Close SHORT Position at Specific Price (Limit Order)
+ */
+export const closeShortAtPriceTool = createTool({
+  id: "close-short-at-price",
+  description: "Closes a SHORT position at a specific price using limit order",
+  inputSchema: z.object({
+    telegramUserId: z.string(),
+    symbol: z.string(),
+    price: z.number(),
+    size: z.number().optional(),
+  }),
+  outputSchema: z.object({
+    success: z.boolean(),
+    message: z.string(),
+  }),
+  execute: async ({ context, mastra }) => {
+    const logger = mastra?.getLogger();
+    logger?.info('🔴 [closeShortAtPriceTool] Closing SHORT at price', context);
+
+    try {
+      const accounts = await db.query.mexcAccounts.findMany({
+        where: and(
+          eq(mexcAccounts.telegramUserId, context.telegramUserId),
+          eq(mexcAccounts.isActive, true)
+        ),
+      });
+
+      if (accounts.length === 0) {
+        return { success: false, message: "❌ Нет активных аккаунтов" };
+      }
+
+      const symbol = `${context.symbol}_USDT`;
+      const results: string[] = [];
+
+      for (const account of accounts) {
+        try {
+          const client = createMexcClient(account.uId);
+          // Get all positions
+          const posResponse = await client.getOpenPositions("");
+          
+          // Extract data array from response object
+          let allPositions: any[] = [];
+          if (posResponse && typeof posResponse === 'object' && Array.isArray(posResponse.data)) {
+            allPositions = posResponse.data;
+          } else if (Array.isArray(posResponse)) {
+            allPositions = posResponse;
+          }
+          
+          // Filter for SHORT positions of our symbol
+          const positions = allPositions.filter((pos: any) => pos.symbol === symbol && pos.side === 2); // side 2 = SHORT
+          
+          if (positions.length === 0) {
+            results.push(`⚠️ Аккаунт ${account.accountNumber}: нет SHORT позиций по ${symbol}`);
+            continue;
+          }
+
+          for (const pos of positions) {
+            const closeSize = context.size || Math.abs((pos as any).holdVol);
+            // For SHORT, closing = BUY (side 4)
+            const closeSide = 4;
+
+            logger?.info(`📍 Closing SHORT at price`, { symbol, price: context.price, size: closeSize });
+
+            await client.submitOrder({
+              symbol,
+              side: closeSide,
+              vol: closeSize,
+              type: 1, // Limit order
+              price: context.price,
+              openType: 2,
+            });
+
+            results.push(`✅ Аккаунт ${account.accountNumber}: SHORT закрыта по ${context.price}, ${closeSize} контрактов`);
+          }
+        } catch (error: any) {
+          logger?.error(`❌ Error closing SHORT for account ${account.accountNumber}`, { error: error.message });
+          results.push(`❌ Аккаунт ${account.accountNumber}: ${error.message}`);
+        }
+      }
+
+      return { success: results.some(r => r.includes("✅")), message: results.join("\n") };
+    } catch (error: any) {
+      return { success: false, message: `Ошибка: ${error.message}` };
+    }
+  },
+});

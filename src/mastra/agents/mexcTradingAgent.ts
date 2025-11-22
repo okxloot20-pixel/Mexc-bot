@@ -11,6 +11,7 @@ import {
   openLongLimitTool,
   openShortLimitTool,
   closePositionTool,
+  closeShortAtPriceTool,
   getPositionsTool,
   getBalanceTool,
   getOrdersTool,
@@ -79,6 +80,36 @@ async function getBestBidPrice(symbol: string): Promise<number | null> {
   } catch (error: any) {
     const logger = globalMastra?.getLogger();
     logger?.error(`❌ Error getting best bid price for ${symbol}`, { error: error.message });
+    return null;
+  }
+}
+
+// Helper: Get best ask price from MEXC orderbook (for closing SHORT positions)
+async function getBestAskPrice(symbol: string): Promise<number | null> {
+  try {
+    const logger = globalMastra?.getLogger();
+    logger?.info(`📊 Fetching best ask for ${symbol}`);
+    
+    // Use correct MEXC API endpoint for depth/orderbook
+    const response = await fetch(`https://api.mexc.com/api/v3/depth?symbol=${symbol}&limit=5`);
+    const data = await response.json();
+    
+    logger?.info(`📊 Depth API Response for ${symbol}:`, JSON.stringify(data).substring(0, 300));
+    
+    // Check if response has asks array
+    if (Array.isArray(data.asks) && data.asks.length > 0) {
+      // asks is array of [price, volume] pairs
+      // First element is best ask (lowest price)
+      const bestAsk = parseFloat(data.asks[0][0]);
+      logger?.info(`💰 Best ask found: ${bestAsk} for ${symbol}`);
+      return bestAsk;
+    }
+    
+    logger?.error(`❌ No asks found in API response for ${symbol}`);
+    return null;
+  } catch (error: any) {
+    const logger = globalMastra?.getLogger();
+    logger?.error(`❌ Error getting best ask price for ${symbol}`, { error: error.message });
     return null;
   }
 }
@@ -269,6 +300,29 @@ U_ID: ${uId.substring(0, 30)}...
       leverage,
     });
     return `✅ *SHORT лимит по best bid ${bestBidPrice}*\n\n${result}`;
+  }
+  
+  // Close SHORT limit at best ask price from orderbook
+  if (cmd.startsWith("/closebs")) {
+    const parts = message.trim().split(/\s+/);
+    const symbol = parts[1] ? parts[1].toUpperCase() : "BTC";
+    const size = parts[2] ? parseInt(parts[2]) : undefined;
+    
+    // Get best ask price from orderbook (API requires format without underscore)
+    const apiSymbol = `${symbol}USDT`;
+    const bestAskPrice = await getBestAskPrice(apiSymbol);
+    
+    if (bestAskPrice === null) {
+      return `❌ Не удалось получить цену из стакана для ${apiSymbol}`;
+    }
+    
+    const result = await executeToolDirect(closeShortAtPriceTool, {
+      telegramUserId: userId,
+      symbol,
+      price: bestAskPrice,
+      size,
+    });
+    return `✅ *SHORT закрывается по best ask ${bestAskPrice}*\n\n${result}`;
   }
   
   // Close position
