@@ -31,7 +31,7 @@ The bot uses **direct command parsing** with **real MEXC API calls**:
 
 **New Commands** (November 22, 2025):
 - `/sb SYMBOL [SIZE] [LEVERAGE]` - Open SHORT limit at **best bid** price from orderbook
-- `/closebs SYMBOL [SIZE]` - Close SHORT position at **best bid** price from orderbook (to BUY and close)
+- `/closebs SYMBOL [SIZE]` - Close SHORT position at **best ask** price from orderbook
 
 **Implementation Details**:
 - Accounts stored in PostgreSQL (`mexc_accounts` table) with u_id and proxy settings
