@@ -19,16 +19,23 @@ Preferred communication style: Simple, everyday language.
 
 # System Architecture
 
-## Fast Command Processing
+## Fast Command Processing with Real MEXC API
 
-Instead of using LLM-based agents, the bot uses **direct command parsing** for instant responses:
+The bot uses **direct command parsing** with **real MEXC API calls**:
 
-- **Command Parser** (`parseAndExecuteCommand` in `src/mastra/agents/mexcTradingAgent.ts`): Directly matches Telegram commands to responses
-- **No LLM overhead**: No API calls, instant responses (< 100ms)
-- **13 trading commands**: /lm, /sm, /l, /s, /close, /lc, /sc, /lcm, /scm, /positions, /orders, /balance, /cancel
-- **Account management**: /register, /accounts, /settings
+- **Command Parser** (`parseAndExecuteCommand` in `src/mastra/agents/mexcTradingAgent.ts`): Routes commands directly to MEXC API
+- **Real API Integration**: Uses `mexcApiCall()` to execute trades on MEXC futures
+- **Multi-account support**: Executes trades on ALL registered accounts simultaneously
+- **13+ trading commands**: /lm, /sm, /l, /s, /close, /lc, /sc, /lcm, /scm, /positions, /orders, /balance, /cancel
+- **Account management**: /register (saves WEB_UID), /accounts (lists from DB), /settings
 
-**Rationale**: Trading bots need instant responses. Direct command parsing eliminates LLM latency and API cost while maintaining full functionality.
+**Implementation Details**:
+- Accounts stored in PostgreSQL (`mexc_accounts` table) with WEB_UID and proxy settings
+- Each command gets accounts from DB and makes authenticated MEXC API requests
+- WEB_UID extracted from browser cookies, used in API calls for authentication
+- Errors handled gracefully with per-account failure reporting
+
+**Rationale**: Trading bots need instant responses with real execution. Direct API calls eliminate LLM latency while maintaining accuracy and multi-account control.
 
 ## Telegram Webhook Integration
 

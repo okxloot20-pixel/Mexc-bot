@@ -26,7 +26,7 @@ function createMexcSignature(params: Record<string, any>, secretKey: string): st
 }
 
 // Helper function to make authenticated MEXC API calls
-async function mexcApiCall(
+export async function mexcApiCall(
   endpoint: string,
   method: string,
   webUid: string,

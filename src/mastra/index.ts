@@ -247,7 +247,7 @@ export const mastra = new Mastra({
               }
 
               // Parse and execute command
-              const response = await parseAndExecuteCommand(message, userId);
+              const response = await parseAndExecuteCommand(message, userId, mastra);
               console.log(`✅ Generated response (${response.length} chars)`);
 
               // Send response back to Telegram
