@@ -527,15 +527,29 @@ U_ID: ${uId.substring(0, 30)}...
   }
   
   if (message === "👤 Аккаунт") {
-    return JSON.stringify({
-      type: "keyboard_menu",
-      text: "👤 *Аккаунт*",
-      keyboard: [
-        ["📋 Регистрация", "📊 Мои аккаунты"],
-        ["💰 Баланс"],
-        ["← Назад"]
-      ]
-    });
+    try {
+      const accounts = await db.query.mexcAccounts.findMany({
+        where: eq(mexcAccounts.telegramUserId, userId),
+      });
+      
+      if (accounts.length === 0) {
+        return `📊 *Ваши аккаунты*
+
+Нет зарегистрированных аккаунтов.
+Используйте /register для добавления`;
+      }
+      
+      let response = `📊 *Ваши аккаунты*\n\n`;
+      accounts.forEach((acc, idx) => {
+        response += `${idx + 1}️⃣ Аккаунт #${acc.accountNumber}\n`;
+        response += `   U_ID: ${acc.uId.substring(0, 20)}...\n`;
+        if (acc.proxy) response += `   Прокси: ${acc.proxy}\n`;
+        response += `   Рычаг: ${acc.defaultLeverage}x | Размер: ${acc.defaultSize}\n\n`;
+      });
+      return response;
+    } catch (error: any) {
+      return `❌ Ошибка при получении аккаунтов: ${error.message}`;
+    }
   }
   
   
