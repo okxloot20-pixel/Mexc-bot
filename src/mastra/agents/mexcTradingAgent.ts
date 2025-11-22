@@ -182,31 +182,37 @@ U_ID: ${uId.substring(0, 30)}...
   // Open LONG limit
   if (cmd.startsWith("/l ")) {
     const parts = message.trim().split(/\s+/);
-    const price = parts[1] || "0";
+    const price = parseFloat(parts[1]) || 0;
     const symbol = parts[2] ? parts[2].toUpperCase() : "BTC";
-    const size = parts[3] || "10";
-    const leverage = parts[4] || "20";
-    return `✅ *Лимит LONG ордер создан*
-
-Цена: ${price}
-Символ: ${symbol}_USDT
-Размер: ${size} контрактов
-Рычаг: ${leverage}x`;
+    const size = parts[3] ? parseInt(parts[3]) : undefined;
+    const leverage = parts[4] ? parseInt(parts[4]) : undefined;
+    
+    const result = await executeToolDirect(openLongLimitTool, {
+      telegramUserId: userId,
+      symbol,
+      price,
+      size,
+      leverage,
+    });
+    return `✅ *Лимит LONG ордер создаётся*\n\n${result}`;
   }
   
   // Open SHORT limit
   if (cmd.startsWith("/s ")) {
     const parts = message.trim().split(/\s+/);
-    const price = parts[1] || "0";
+    const price = parseFloat(parts[1]) || 0;
     const symbol = parts[2] ? parts[2].toUpperCase() : "BTC";
-    const size = parts[3] || "10";
-    const leverage = parts[4] || "20";
-    return `✅ *Лимит SHORT ордер создан*
-
-Цена: ${price}
-Символ: ${symbol}_USDT
-Размер: ${size} контрактов
-Рычаг: ${leverage}x`;
+    const size = parts[3] ? parseInt(parts[3]) : undefined;
+    const leverage = parts[4] ? parseInt(parts[4]) : undefined;
+    
+    const result = await executeToolDirect(openShortLimitTool, {
+      telegramUserId: userId,
+      symbol,
+      price,
+      size,
+      leverage,
+    });
+    return `✅ *Лимит SHORT ордер создаётся*\n\n${result}`;
   }
   
   // Close position
