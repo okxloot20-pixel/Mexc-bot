@@ -42,6 +42,16 @@ const openai = createOpenAI({
  * It understands Russian trading commands and can manage multiple accounts simultaneously
  */
 
+// Helper: Execute trading tool with proper context
+async function executeToolDirect(tool: any, context: any): Promise<string> {
+  try {
+    const result = await tool.execute({ context, mastra: globalMastra });
+    return result.message || JSON.stringify(result);
+  } catch (error: any) {
+    return `❌ Ошибка: ${error.message}`;
+  }
+}
+
 // Simple command parser - no LLM needed for basic testing
 export async function parseAndExecuteCommand(message: string, userId: string, mastra?: any): Promise<string> {
   if (mastra) {
@@ -144,11 +154,13 @@ U_ID: ${uId.substring(0, 30)}...
     const size = parts[2] ? parseInt(parts[2]) : undefined;
     const leverage = parts[3] ? parseInt(parts[3]) : undefined;
     
-    return `✅ *LONG позиция открывается*
-
-Символ: ${symbol}_USDT
-Размер: ${size || "default"} контрактов
-Плечо: ${leverage || "default"}x`;
+    const result = await executeToolDirect(openLongMarketTool, {
+      telegramUserId: userId,
+      symbol,
+      size,
+      leverage,
+    });
+    return `✅ *LONG позиция открывается*\n\n${result}`;
   }
   
   // Open SHORT market
@@ -158,11 +170,13 @@ U_ID: ${uId.substring(0, 30)}...
     const size = parts[2] ? parseInt(parts[2]) : undefined;
     const leverage = parts[3] ? parseInt(parts[3]) : undefined;
     
-    return `🔴 *SHORT позиция открывается*
-
-Символ: ${symbol}_USDT
-Размер: ${size || "default"} контрактов
-Плечо: ${leverage || "default"}x`;
+    const result = await executeToolDirect(openShortMarketTool, {
+      telegramUserId: userId,
+      symbol,
+      size,
+      leverage,
+    });
+    return `🔴 *SHORT позиция открывается*\n\n${result}`;
   }
   
   // Open LONG limit
@@ -201,10 +215,12 @@ U_ID: ${uId.substring(0, 30)}...
     const symbol = parts[1] ? parts[1].toUpperCase() : "BTC";
     const size = parts[2] ? parseInt(parts[2]) : undefined;
     
-    return `🧹 *Позиция закрывается*
-
-Символ: ${symbol}_USDT
-Размер: ${size || "all"} контрактов`;
+    const result = await executeToolDirect(closePositionTool, {
+      telegramUserId: userId,
+      symbol,
+      size,
+    });
+    return `🧹 *Позиция закрывается*\n\n${result}`;
   }
   
   // Close LONG market
@@ -257,16 +273,18 @@ U_ID: ${uId.substring(0, 30)}...
   
   // View positions
   if (cmd === "/positions" || cmd === "/pos") {
-    return `📈 *Открытые позиции*
-
-Получение данных с MEXC...`;
+    const result = await executeToolDirect(getPositionsTool, {
+      telegramUserId: userId,
+    });
+    return result;
   }
   
   // View balance
   if (cmd === "/balance") {
-    return `💰 *Баланс счета*
-
-Получение данных с MEXC...`;
+    const result = await executeToolDirect(getBalanceTool, {
+      telegramUserId: userId,
+    });
+    return result;
   }
   
   // Cancel order
