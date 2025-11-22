@@ -185,6 +185,39 @@ async function getSecondAskPrice(symbol: string): Promise<string | null> {
   }
 }
 
+// Helper: Get fourth ask price from MEXC orderbook (for LONG limit) - returns STRING to preserve precision
+async function getFourthAskPrice(symbol: string): Promise<string | null> {
+  try {
+    const logger = globalMastra?.getLogger();
+    logger?.info(`📊 Fetching fourth ask price (4th SELL price) for ${symbol}`);
+    
+    // Use correct MEXC API endpoint for depth/orderbook
+    const response = await fetch(`https://api.mexc.com/api/v3/depth?symbol=${symbol}&limit=10`);
+    const data = await response.json();
+    
+    logger?.info(`📊 Full orderbook response:`, JSON.stringify({ bidsLength: data.bids?.length, asksLength: data.asks?.length }));
+    logger?.info(`📊 All asks: ${JSON.stringify(data.asks?.slice(0, 10))}`);
+    
+    // Check if response has asks array with at least 4 elements
+    if (Array.isArray(data.asks) && data.asks.length > 3) {
+      // Fourth element is fourth best ask (asks[3])
+      // Keep as STRING to preserve precision for MEXC API
+      const fourthAskRaw = data.asks[3][0];
+      const fourthAskNumeric = parseFloat(fourthAskRaw);
+      logger?.info(`💰 Fourth ask found at asks[3] (RAW STRING): "${fourthAskRaw}"`);
+      logger?.info(`💰 Fourth ask (numeric): ${fourthAskNumeric}`);
+      return fourthAskRaw; // Return STRING not number
+    }
+    
+    logger?.error(`❌ Not enough asks in API response for ${symbol}`);
+    return null;
+  } catch (error: any) {
+    const logger = globalMastra?.getLogger();
+    logger?.error(`❌ Error getting fourth ask price for ${symbol}`, { error: error.message });
+    return null;
+  }
+}
+
 // Simple command parser - no LLM needed for basic testing
 export async function parseAndExecuteCommand(message: string, userId: string, mastra?: any): Promise<string> {
   if (mastra) {
@@ -280,29 +313,29 @@ U_ID: ${uId.substring(0, 30)}...
     }
   }
   
-  // Open LONG limit at second ask price from orderbook
+  // Open LONG limit at fourth ask price from orderbook
   if (cmd.startsWith("/lb")) {
     const parts = message.trim().split(/\s+/);
     const symbol = parts[1] ? parts[1].toUpperCase() : "BTC";
     const size = parts[2] ? parseInt(parts[2]) : undefined;
     const leverage = parts[3] ? parseInt(parts[3]) : undefined;
     
-    // Get second ask price from orderbook (API requires format without underscore)
+    // Get fourth ask price from orderbook (API requires format without underscore)
     const apiSymbol = `${symbol}USDT`;
-    const secondAskPrice = await getSecondAskPrice(apiSymbol);
+    const fourthAskPrice = await getFourthAskPrice(apiSymbol);
     
-    if (secondAskPrice === null) {
+    if (fourthAskPrice === null) {
       return `❌ Не удалось получить цену из стакана для ${apiSymbol}`;
     }
     
     const result = await executeToolDirect(openLongLimitTool, {
       telegramUserId: userId,
       symbol,
-      price: parseFloat(secondAskPrice),
+      price: parseFloat(fourthAskPrice),
       size,
       leverage,
     });
-    return `✅ *LONG лимит по 2nd ask ${secondAskPrice}*\n\n${result}`;
+    return `✅ *LONG лимит по 4th ask ${fourthAskPrice}*\n\n${result}`;
   }
   
   // Open LONG market
