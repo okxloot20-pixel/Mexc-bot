@@ -104,6 +104,13 @@ async function getSecondBidPrice(symbol: string): Promise<number | null> {
       return secondBid;
     }
     
+    // DREAMSX402 special handling - if no second bid, use best bid
+    if (symbol.includes("DREAMSX402") && Array.isArray(data.bids) && data.bids.length > 0) {
+      const bestBid = parseFloat(data.bids[0][0]);
+      logger?.info(`💰 Using best bid for DREAMSX402 (second unavailable): ${bestBid}`);
+      return bestBid;
+    }
+    
     logger?.error(`❌ Not enough bids in API response for ${symbol}`);
     return null;
   } catch (error: any) {
