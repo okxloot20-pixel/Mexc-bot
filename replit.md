@@ -1,0 +1,249 @@
+# Overview
+
+This project is a **Mastra-based agent automation system** designed for trading operations, specifically integrated with **MEXC exchange** and **Telegram** messaging. The system uses **Mastra** (an AI agent framework) to orchestrate workflows triggered by external events (Telegram messages), execute trading logic, and maintain durable execution through **Inngest**.
+
+The application demonstrates a complete agent-driven automation stack with:
+- Event-driven architecture (webhook triggers)
+- AI-powered decision-making (agents with LLM integration)
+- Persistent storage (PostgreSQL with Drizzle ORM)
+- Durable workflow execution (Inngest for retries and observability)
+
+# User Preferences
+
+Preferred communication style: Simple, everyday language.
+
+# System Architecture
+
+## Core Framework: Mastra
+
+The system is built on **Mastra** (`@mastra/core`), a TypeScript framework for building AI agents and workflows. Key architectural decisions:
+
+- **Agents as reasoning engines**: MEXC Trading Agent (`mexcTradingAgent`) uses LLMs (OpenAI/OpenRouter) to interpret trading signals and make decisions
+- **Workflows for orchestration**: `telegramTradingWorkflow` coordinates multi-step trading operations with branching logic
+- **Tools for actions**: Custom tools extend agent capabilities beyond text generation (e.g., API calls, database queries)
+- **Memory for context**: Agents maintain conversation history and state across interactions using Mastra's memory system
+
+**Rationale**: Mastra provides a unified interface for LLM integration, workflow management, and agent orchestration, reducing the complexity of building AI-powered automation systems.
+
+## Event-Driven Triggers
+
+The system uses **webhook-based triggers** for external integrations:
+
+- **Telegram Integration** (`src/triggers/telegramTriggers.ts`): Receives messages via webhook at `/webhooks/telegram/action`
+- **Extensible Trigger Pattern**: Example connector triggers demonstrate a reusable pattern for adding new event sources (Linear, Slack, etc.)
+
+**Design Pattern**:
+1. Register webhook routes using `registerApiRoute` from `src/mastra/inngest`
+2. Parse incoming payloads and extract relevant data
+3. Pass full payload to handler functions - consumers select what they need
+4. Handlers invoke Mastra workflows or agents
+
+**Rationale**: Webhook triggers enable real-time responses to external events without polling. The pattern separates transport (HTTP) from business logic (agents/workflows), making the system extensible.
+
+## Durable Execution with Inngest
+
+**Inngest** (`@mastra/inngest`) provides workflow durability and observability:
+
+- **Automatic retries**: Failed workflow steps automatically retry with configurable backoff
+- **Step memoization**: Completed steps are cached, so retries skip successful operations
+- **Observability**: Real-time monitoring through Inngest dashboard
+- **Event-driven orchestration**: Workflows execute in response to events, not HTTP requests
+
+**Integration Points**:
+- `src/mastra/inngest/index.ts`: Inngest client configuration
+- `inngestServe`: Exposes workflows as Inngest functions
+- Custom middleware for real-time updates (`@inngest/realtime`)
+
+**Rationale**: Trading workflows require reliability. Inngest ensures workflows complete even if the application crashes or external APIs fail temporarily. This prevents partial executions that could leave the system in an inconsistent state.
+
+## Data Persistence
+
+### PostgreSQL + Drizzle ORM
+
+- **Database**: PostgreSQL with `pgvector` extension for semantic search
+- **Schema Definition**: `src/mastra/storage/schema.ts` (referenced in `drizzle.config.ts`)
+- **ORM**: Drizzle (`drizzle-orm`) for type-safe database queries
+- **Migrations**: `drizzle-kit` manages schema changes in `./drizzle` directory
+
+**Storage Adapters**:
+- `@mastra/pg`: PostgreSQL adapter for Mastra's storage layer
+- `@mastra/libsql`: Alternative SQLite-compatible adapter (LibSQL)
+
+**Rationale**: PostgreSQL provides ACID guarantees for trading data. Drizzle offers type safety without runtime overhead. The `pgvector` extension enables semantic memory recall for agents.
+
+### Shared Storage Pattern
+
+`src/mastra/storage/sharedPostgresStorage.ts` (inferred from imports) likely provides a singleton storage instance used across agents and workflows.
+
+**Rationale**: Centralized storage ensures consistent state management and simplifies configuration.
+
+## Logging and Observability
+
+### Custom Pino Logger
+
+`src/mastra/index.ts` defines `ProductionPinoLogger`, a custom logger extending `MastraLogger`:
+
+- **Structured logging**: JSON-formatted logs for parsing and analysis
+- **Log levels**: DEBUG, INFO, WARN, ERROR (configurable via `LogLevel`)
+- **ISO timestamps**: Consistent time formatting across logs
+- **Minimal overhead**: Pino is optimized for high-performance logging
+
+**Rationale**: Production systems require structured logs for debugging and monitoring. Pino provides fast, low-overhead logging suitable for high-frequency trading operations.
+
+## Agent Architecture
+
+### MEXC Trading Agent
+
+The `mexcTradingAgent` (referenced in `src/mastra/index.ts`) likely:
+- Interprets trading signals from Telegram messages
+- Makes buy/sell decisions based on market data
+- Executes trades via MEXC API integration
+- Uses LLM reasoning to validate signals and manage risk
+
+**Design Principles**:
+- **Tools over hardcoded logic**: Trading operations are exposed as tools that the agent calls dynamically
+- **Memory for context**: Agent remembers recent trades and market conditions
+- **Guardrails**: Input/output processors validate signals and prevent unsafe trades
+
+### Model Configuration
+
+Supports multiple LLM providers via Mastra's model router:
+- **OpenAI** (`@ai-sdk/openai`): GPT-4 models for reasoning
+- **OpenRouter** (`@openrouter/ai-sdk-provider`): Access to 40+ providers through one API
+- **Provider flexibility**: No vendor lock-in, can switch models without code changes
+
+**Rationale**: Different tasks require different models. Fast, cheap models (GPT-4o-mini) for classification; powerful models (GPT-4o) for complex reasoning. OpenRouter provides fallback options if primary provider has outages.
+
+## Workflow Design
+
+### Telegram Trading Workflow
+
+`telegramTradingWorkflow` orchestrates the trading pipeline:
+
+1. **Receive signal**: Parse Telegram message
+2. **Validate signal**: Agent checks if message contains valid trading information
+3. **Branch logic**: Route to appropriate handler (buy/sell/ignore)
+4. **Execute trade**: Call MEXC API via tool
+5. **Confirm**: Send result back to Telegram
+
+**Control Flow Features**:
+- **Branching** (`.branch()`): Different paths for buy vs. sell signals
+- **Parallel execution** (`.parallel()`): Concurrent validation checks
+- **Error handling**: Retries with exponential backoff
+- **Suspend/resume**: Can pause for manual approval (human-in-the-loop)
+
+**Rationale**: Workflows provide explicit control over execution order, unlike pure agent systems where the LLM decides what to do next. This reduces errors and improves debuggability.
+
+## MCP (Model Context Protocol)
+
+`@mastra/mcp` integration suggests support for MCP servers, which provide:
+- Standardized tool interfaces
+- Reusable context providers
+- Interoperability with other AI frameworks
+
+**Rationale**: MCP enables sharing tools and context providers across different AI systems, reducing duplication.
+
+## Development Workflow
+
+### TypeScript Configuration
+
+`tsconfig.json` uses modern settings:
+- **ES2022 target**: Modern JavaScript features
+- **Module resolution: bundler**: Compatible with build tools like esbuild
+- **Strict mode**: Type safety enforced
+- **No emit**: Compilation handled by `tsx` or build tools
+
+### Scripts
+
+- **`mastra dev`**: Development server with hot reload
+- **`mastra build`**: Production build
+- **Type checking**: `tsc` for validation
+- **Formatting**: Prettier for code consistency
+
+**Rationale**: Mastra CLI abstracts build complexity. `tsx` enables running TypeScript directly without transpilation step.
+
+### Mastra Playground
+
+`.mastra/output/playground/` contains a built-in UI for:
+- Testing agents interactively
+- Visualizing workflow graphs
+- Inspecting execution logs
+- Monitoring real-time events
+
+**Critical Note**: The Playground UI **requires** agents to use `.generateLegacy()` method for backward compatibility with AI SDK v4, even though v5 is preferred for new code.
+
+**Rationale**: Visual debugging accelerates development. Graph visualization helps understand complex workflows.
+
+# External Dependencies
+
+## Third-Party Services
+
+### MEXC Exchange API
+- **Purpose**: Execute cryptocurrency trades
+- **Integration**: Likely via custom tool in `src/mastra/tools/`
+- **Authentication**: API keys (not visible in repository)
+
+### Telegram Bot API
+- **Purpose**: Receive trading signals and send confirmations
+- **Webhook**: `/webhooks/telegram/action`
+- **Environment Variable**: `TELEGRAM_BOT_TOKEN`
+
+### Exa (Search API)
+- **Package**: `exa-js`
+- **Purpose**: External data retrieval for market research or signal validation
+
+### Slack API
+- **Package**: `@slack/web-api`
+- **Purpose**: Alternative messaging integration (trigger examples in `src/triggers/slackTriggers.ts`)
+
+## AI/LLM Providers
+
+### OpenAI
+- **Models**: GPT-4o, GPT-4o-mini
+- **Use Cases**: Primary reasoning engine for agents
+- **Environment Variable**: `OPENAI_API_KEY`
+
+### OpenRouter
+- **Purpose**: Multi-provider gateway for LLM access
+- **Benefit**: Fallback routing, access to 40+ providers
+
+### Anthropic (Optional)
+- **Models**: Claude series
+- **Use Case**: Alternative reasoning engine
+
+## Infrastructure Services
+
+### Inngest Cloud
+- **Purpose**: Workflow orchestration and monitoring
+- **Features**: Real-time dashboard, event history, step debugging
+- **Development Mode**: Local Inngest server at `http://localhost:8288`
+
+### PostgreSQL Database
+- **Environment Variable**: `DATABASE_URL`
+- **Extensions**: `pgvector` for semantic search
+- **Use Cases**: Agent memory, workflow state, trading history
+
+### LibSQL (Alternative)
+- **Purpose**: SQLite-compatible database for local development
+- **Use Case**: File-based storage when PostgreSQL is unavailable
+
+## Development Tools
+
+### Drizzle Kit
+- **Purpose**: Database schema management and migrations
+- **Configuration**: `drizzle.config.ts`
+
+### Inngest CLI
+- **Purpose**: Local development server for Inngest workflows
+- **Use Case**: Testing workflows without cloud deployment
+
+### TSX
+- **Purpose**: Execute TypeScript directly without build step
+- **Use Case**: Development and scripts
+
+## Key Design Trade-offs
+
+1. **Inngest vs. Simple HTTP**: Chose Inngest for durability at the cost of additional dependency and configuration complexity
+2. **PostgreSQL vs. LibSQL**: PostgreSQL for production reliability; LibSQL for simpler local development
+3. **Mastra vs. LangChain**: Mastra provides tighter TypeScript integration and better workflow orchestration, but smaller ecosystem
+4. **Webhook triggers vs. Polling**: Webhooks for real-time response, but require public endpoints and webhook setup
