@@ -28,6 +28,7 @@ const processTradingCommand = createStep({
   outputSchema: z.object({
     response: z.string().describe("Agent's response to the trading command"),
     success: z.boolean().describe("Whether the command was processed successfully"),
+    chatId: z.number().optional().describe("Telegram chat ID to send response to"),
   }),
 
   execute: async ({ inputData, mastra }) => {
@@ -35,6 +36,7 @@ const processTradingCommand = createStep({
     logger?.info('📱 [processTradingCommand] Processing Telegram message', {
       userName: inputData.userName,
       message: inputData.message,
+      chatId: inputData.chatId,
     });
 
     try {
@@ -62,6 +64,7 @@ const processTradingCommand = createStep({
       return {
         response: agentResponse.text,
         success: true,
+        chatId: inputData.chatId,
       };
     } catch (error: any) {
       logger?.error('❌ [processTradingCommand] Error processing command', {
@@ -71,6 +74,7 @@ const processTradingCommand = createStep({
       return {
         response: `❌ Ошибка при обработке команды: ${error.message}`,
         success: false,
+        chatId: inputData.chatId,
       };
     }
   },
