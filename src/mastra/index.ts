@@ -9,8 +9,9 @@ import { z } from "zod";
 
 import { sharedPostgresStorage } from "./storage";
 import { inngest, inngestServe } from "./inngest";
-import { exampleWorkflow } from "./workflows/exampleWorkflow"; // Replace with your own workflow
-import { exampleAgent } from "./agents/exampleAgent"; // Replace with your own agent
+import { telegramTradingWorkflow } from "./workflows/telegramTradingWorkflow";
+import { mexcTradingAgent } from "./agents/mexcTradingAgent";
+import { registerTelegramTrigger } from "../triggers/telegramTriggers";
 
 class ProductionPinoLogger extends MastraLogger {
   protected logger: pino.Logger;
@@ -56,9 +57,13 @@ class ProductionPinoLogger extends MastraLogger {
 export const mastra = new Mastra({
   storage: sharedPostgresStorage,
   // Register your workflows here
-  workflows: {},
+  workflows: {
+    telegramTradingWorkflow,
+  },
   // Register your agents here
-  agents: {},
+  agents: {
+    mexcTradingAgent,
+  },
   mcpServers: {
     allTools: new MCPServer({
       name: "allTools",
@@ -208,6 +213,34 @@ export const mastra = new Mastra({
       // ...registerGithubTrigger({ ... }),
       // ...registerSlackTrigger({ ... }),
       // ...registerStripeWebhook({ ... }),
+      
+      // ======================================================================
+      // Telegram Trigger for MEXC Trading Bot
+      // ======================================================================
+      ...registerTelegramTrigger({
+        triggerType: "telegram/message",
+        handler: async (mastra, triggerInfo) => {
+          const logger = mastra.getLogger();
+          logger?.info("🤖 [Telegram Trigger] Processing message", {
+            userName: triggerInfo.params.userName,
+            message: triggerInfo.params.message,
+          });
+
+          const chatId = triggerInfo.payload?.message?.chat?.id;
+          const messageId = triggerInfo.payload?.message?.message_id;
+          const threadId = `telegram-${triggerInfo.params.userName}-${Date.now()}`;
+
+          const run = await telegramTradingWorkflow.createRunAsync();
+          await run.start({
+            inputData: {
+              threadId,
+              userName: triggerInfo.params.userName,
+              message: triggerInfo.params.message,
+              chatId,
+            },
+          });
+        },
+      }),
     ],
   },
   logger:
