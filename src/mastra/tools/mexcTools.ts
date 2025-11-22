@@ -398,17 +398,23 @@ export const closePositionTool = createTool({
       for (const account of accounts) {
         try {
           const client = createMexcClient(account.uId);
-          const posResponse = await client.getOpenPositions(symbol);
-          const positions = Array.isArray(posResponse) ? posResponse : [];
+          // Get all positions (pass empty string to get all)
+          const posResponse = await client.getOpenPositions("");
+          const allPositions = Array.isArray(posResponse) ? posResponse : [];
+          
+          // Filter for our symbol
+          const positions = allPositions.filter((pos: any) => pos.symbol === symbol);
 
           if (positions.length === 0) {
-            results.push(`⚠️ Аккаунт ${account.accountNumber}: нет открытых позиций`);
+            results.push(`⚠️ Аккаунт ${account.accountNumber}: нет открытых позиций по ${symbol}`);
             continue;
           }
 
           for (const pos of positions) {
             const closeSize = context.size || Math.abs((pos as any).holdVol);
             const closeSide = (pos as any).side === 1 ? 4 : 2;
+
+            logger?.info(`📍 Closing position`, { symbol, closeSize, closeSide, side: (pos as any).side });
 
             await client.submitOrder({
               symbol,
@@ -422,6 +428,7 @@ export const closePositionTool = createTool({
             results.push(`✅ Аккаунт ${account.accountNumber}: закрыта позиция ${closeSize} контрактов`);
           }
         } catch (error: any) {
+          logger?.error(`❌ Error closing position for account ${account.accountNumber}`, { error: error.message });
           results.push(`❌ Аккаунт ${account.accountNumber}: ${error.message}`);
         }
       }
