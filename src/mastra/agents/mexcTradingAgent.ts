@@ -84,6 +84,35 @@ async function getBestBidPrice(symbol: string): Promise<number | null> {
   }
 }
 
+// Helper: Get second bid price from MEXC orderbook (second price to buy)
+async function getSecondBidPrice(symbol: string): Promise<number | null> {
+  try {
+    const logger = globalMastra?.getLogger();
+    logger?.info(`📊 Fetching second bid price for ${symbol}`);
+    
+    // Use correct MEXC API endpoint for depth/orderbook
+    const response = await fetch(`https://api.mexc.com/api/v3/depth?symbol=${symbol}&limit=5`);
+    const data = await response.json();
+    
+    logger?.info(`📊 Orderbook bids: ${JSON.stringify(data.bids?.slice(0, 3))}`);
+    
+    // Check if response has bids array with at least 2 elements
+    if (Array.isArray(data.bids) && data.bids.length > 1) {
+      // Second element is second best bid
+      const secondBid = parseFloat(data.bids[1][0]);
+      logger?.info(`💰 Second bid found: ${secondBid} for ${symbol}`);
+      return secondBid;
+    }
+    
+    logger?.error(`❌ Not enough bids in API response for ${symbol}`);
+    return null;
+  } catch (error: any) {
+    const logger = globalMastra?.getLogger();
+    logger?.error(`❌ Error getting second bid price for ${symbol}`, { error: error.message });
+    return null;
+  }
+}
+
 // Helper: Get best ask price from MEXC orderbook (for closing SHORT positions)
 async function getBestAskPrice(symbol: string): Promise<number | null> {
   try {
@@ -277,29 +306,29 @@ U_ID: ${uId.substring(0, 30)}...
     return `✅ *Лимит SHORT ордер создаётся*\n\n${result}`;
   }
   
-  // Open SHORT limit at best bid price from orderbook
+  // Open SHORT limit at second bid price from orderbook
   if (cmd.startsWith("/sb")) {
     const parts = message.trim().split(/\s+/);
     const symbol = parts[1] ? parts[1].toUpperCase() : "BTC";
     const size = parts[2] ? parseInt(parts[2]) : undefined;
     const leverage = parts[3] ? parseInt(parts[3]) : undefined;
     
-    // Get best bid price from orderbook (API requires format without underscore)
+    // Get second bid price from orderbook (API requires format without underscore)
     const apiSymbol = `${symbol}USDT`;
-    const bestBidPrice = await getBestBidPrice(apiSymbol);
+    const secondBidPrice = await getSecondBidPrice(apiSymbol);
     
-    if (bestBidPrice === null) {
+    if (secondBidPrice === null) {
       return `❌ Не удалось получить цену из стакана для ${apiSymbol}`;
     }
     
     const result = await executeToolDirect(openShortLimitTool, {
       telegramUserId: userId,
       symbol,
-      price: bestBidPrice,
+      price: secondBidPrice,
       size,
       leverage,
     });
-    return `✅ *SHORT лимит по best bid ${bestBidPrice}*\n\n${result}`;
+    return `✅ *SHORT лимит по 2nd bid ${secondBidPrice}*\n\n${result}`;
   }
   
   // Close SHORT limit at best bid price from orderbook
