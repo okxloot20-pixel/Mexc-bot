@@ -149,55 +149,31 @@ async function getSecondAskPrice(symbol: string): Promise<string | null> {
     const logger = globalMastra?.getLogger();
     logger?.info(`📊 Fetching second ask price (second SELL price) for ${symbol}`);
     
-    // Try both formats: with and without underscore (some symbols require underscore in API)
-    let data: any = null;
-    let usedSymbol = symbol;
-    
-    // Try first without underscore (standard format)
-    let response = await fetch(`https://api.mexc.com/api/v3/depth?symbol=${symbol}&limit=10`);
-    data = await response.json();
-    
-    // If empty, try with underscore format
-    if ((!data.bids || data.bids.length === 0) && (!data.asks || data.asks.length === 0)) {
-      const symbolWithUnderscore = symbol.includes('_') ? symbol : symbol.replace(/USDT$/, '_USDT');
-      logger?.warn(`⚠️ No data for ${symbol}, trying alternative format: ${symbolWithUnderscore}`);
-      response = await fetch(`https://api.mexc.com/api/v3/depth?symbol=${symbolWithUnderscore}&limit=10`);
-      data = await response.json();
-      usedSymbol = symbolWithUnderscore;
-    }
+    // Use correct MEXC API endpoint for depth/orderbook
+    const response = await fetch(`https://api.mexc.com/api/v3/depth?symbol=${symbol}&limit=10`);
+    const data = await response.json();
     
     logger?.info(`📊 Full orderbook response:`, JSON.stringify({ bidsLength: data.bids?.length, asksLength: data.asks?.length }));
     logger?.info(`📊 All bids: ${JSON.stringify(data.bids?.slice(0, 10))}`);
     logger?.info(`📊 All asks: ${JSON.stringify(data.asks?.slice(0, 10))}`);
     
-    // Fallback logic: try second ask → first ask → first bid
     // Check if response has asks array with at least 2 elements
     if (Array.isArray(data.asks) && data.asks.length > 1) {
-      // Use asks[1] = second best ask price (2nd lowest seller price)
+      // Second element is second best ask (asks[1])
+      // Keep as STRING to preserve precision for MEXC API
       const secondAskRaw = data.asks[1][0];
+      const secondAskNumeric = parseFloat(secondAskRaw);
       logger?.info(`💰 Second ask found at asks[1] (RAW STRING): "${secondAskRaw}"`);
-      return secondAskRaw;
+      logger?.info(`💰 Second ask (numeric): ${secondAskNumeric}`);
+      logger?.info(`🔍 DEBUG asks[0]="${data.asks[0][0]}", asks[1]="${data.asks[1][0]}"`);
+      return secondAskRaw; // Return STRING not number
     }
     
-    // Fallback 1: Use best ask (asks[0]) if no second ask available
-    if (Array.isArray(data.asks) && data.asks.length > 0) {
-      const bestAskRaw = data.asks[0][0];
-      logger?.info(`⚠️ Fallback to best ask at asks[0] (RAW STRING): "${bestAskRaw}"`);
-      return bestAskRaw;
-    }
-    
-    // Fallback 2: Use best bid (bids[0]) if no asks available (low liquidity)
-    if (Array.isArray(data.bids) && data.bids.length > 0) {
-      const bestBidRaw = data.bids[0][0];
-      logger?.warn(`⚠️ No asks available - using best bid for ${usedSymbol} (RAW STRING): "${bestBidRaw}"`);
-      return bestBidRaw;
-    }
-    
-    logger?.error(`❌ No orderbook data available for ${usedSymbol} - no bids or asks found`);
+    logger?.error(`❌ Not enough asks in API response for ${symbol}`);
     return null;
   } catch (error: any) {
     const logger = globalMastra?.getLogger();
-    logger?.error(`❌ Error getting ask price for ${symbol}`, { error: error.message });
+    logger?.error(`❌ Error getting second ask price for ${symbol}`, { error: error.message });
     return null;
   }
 }
@@ -397,12 +373,11 @@ U_ID: ${uId.substring(0, 30)}...
     const size = parts[2] ? parseInt(parts[2]) : undefined;
     
     // Get second ask price from orderbook (API requires format without underscore)
-    // Second ask = 2nd lowest seller price = better balance between price and execution
     const apiSymbol = `${symbol}USDT`;
     const secondAskPrice = await getSecondAskPrice(apiSymbol);
     
     if (secondAskPrice === null) {
-      return `❌ *Ошибка для ${apiSymbol}:*\n• Токен не торгуется или нет ликвидности\n• Проверьте наличие позиции командой /positions\n• Используйте /close для закрытия по рыночной цене`;
+      return `❌ Не удалось получить цену из стакана для ${apiSymbol}`;
     }
     
     const result = await executeToolDirect(closeShortAtPriceTool, {
