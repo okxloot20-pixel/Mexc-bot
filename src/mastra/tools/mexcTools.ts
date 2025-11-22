@@ -420,6 +420,9 @@ export const closePositionTool = createTool({
 
       const symbol = `${context.symbol}_USDT`;
       const results: string[] = [];
+      let totalPnlUsd = 0;
+      let totalPnlPercent = 0;
+      let accountsPnlData: any[] = [];
 
       for (const account of accounts) {
         try {
@@ -458,7 +461,20 @@ export const closePositionTool = createTool({
             // closeSide: 4 = close LONG, 2 = close SHORT
             const closeSide = (pos as any).positionType === 1 ? 4 : 2;
 
-            logger?.info(`📍 Closing position`, { symbol, closeSize, closeSide, positionType: (pos as any).positionType });
+            // Capture PnL data before closing
+            const pnlUsd = (pos as any).realised || 0;
+            const pnlPercent = ((pos as any).profitRatio || 0) * 100;
+            
+            accountsPnlData.push({
+              accountNumber: account.accountNumber,
+              pnlUsd,
+              pnlPercent,
+            });
+            
+            totalPnlUsd += pnlUsd;
+            totalPnlPercent += pnlPercent;
+
+            logger?.info(`📍 Closing position`, { symbol, closeSize, closeSide, positionType: (pos as any).positionType, pnlUsd, pnlPercent });
 
             await client.submitOrder({
               symbol,
@@ -469,12 +485,20 @@ export const closePositionTool = createTool({
               openType: 2,
             });
 
-            results.push(`✅ Аккаунт ${account.accountNumber}: закрыта позиция ${closeSize} контрактов`);
+            const pnlEmoji = pnlUsd > 0 ? "📈" : "📉";
+            results.push(`✅ Аккаунт ${account.accountNumber}: закрыта позиция ${closeSize} контрактов | ${pnlEmoji} ${pnlUsd > 0 ? "+" : ""}${pnlUsd.toFixed(2)}$ | ${pnlPercent > 0 ? "+" : ""}${pnlPercent.toFixed(2)}%`);
           }
         } catch (error: any) {
           logger?.error(`❌ Error closing position for account ${account.accountNumber}`, { error: error.message });
           results.push(`❌ Аккаунт ${account.accountNumber}: ${error.message}`);
         }
+      }
+      
+      // Add summary with total PnL
+      if (accountsPnlData.length > 0) {
+        const totalEmoji = totalPnlUsd > 0 ? "📈" : "📉";
+        results.push(`\n*${context.symbol}*`);
+        results.push(`${totalEmoji} Всего: ${totalPnlUsd > 0 ? "+" : ""}${totalPnlUsd.toFixed(2)}$ | ${totalPnlPercent > 0 ? "+" : ""}${(totalPnlPercent / accountsPnlData.length).toFixed(2)}%`);
       }
 
       return { success: results.some(r => r.includes("✅")), message: results.join("\n") };
