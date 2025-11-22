@@ -34,7 +34,7 @@ The bot uses **direct command parsing** with **real MEXC API calls**:
 - Each command gets accounts from DB and makes authenticated MEXC API requests
 - u_id extracted from MEXC browser cookies, used in API calls for authentication
 - u_id format: `IP:PORT:TOKEN` (e.g., `156.246.241.55:63016:uYgG5GfzfZFWGZnW`)
-- u_id is a **session token** - expires when you close browser or log out
+- u_id is a persistent token - не истекает
 - Errors handled gracefully with per-account failure reporting
 
 **How to Get Fresh u_id**:
@@ -70,7 +70,7 @@ The bot uses **direct command parsing** with **real MEXC API calls**:
 - ✅ Command parameter parsing: `/register ACCOUNT_NUM U_ID [PROXY_URL]`
 - ✅ Real MEXC API integration using u_id from cookies (November 22, 2025)
 - ✅ Full support for all trading commands with optional parameters
-- ⚠️ **IMPORTANT**: u_id is a session token that expires. Must get fresh u_id from MEXC browser cookies for each account
+- ✅ u_id остаётся валиден и не истекает
 
 ## Durable Execution with Inngest
 
