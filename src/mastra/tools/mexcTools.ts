@@ -745,7 +745,7 @@ export const closeShortAtPriceTool = createTool({
   inputSchema: z.object({
     telegramUserId: z.string(),
     symbol: z.string(),
-    price: z.number(),
+    price: z.union([z.number(), z.string()]), // Accept both number and string for precision
     size: z.number().optional(),
   }),
   outputSchema: z.object({
@@ -810,12 +810,14 @@ export const closeShortAtPriceTool = createTool({
             try {
               const orderType: 1 | 2 | 3 | 4 | 5 | 6 = 1; // Limit order
               const orderOpenType: 1 | 2 = 2;
+              // Convert price to number if it's a string (preserves precision from API)
+              const priceAsNumber = typeof context.price === 'string' ? parseFloat(context.price) : context.price;
               const orderParams = {
                 symbol,
                 side: closeSide,
                 vol: closeSize,
                 type: orderType, // Limit order at best bid price
-                price: context.price,
+                price: priceAsNumber,
                 openType: orderOpenType,
               };
               logger?.info(`📤 Отправляю лимит-ордер по best bid:`, orderParams);

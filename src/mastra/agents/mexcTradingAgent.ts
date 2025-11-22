@@ -143,8 +143,8 @@ async function getBestAskPrice(symbol: string): Promise<number | null> {
   }
 }
 
-// Helper: Get second ask price from MEXC orderbook (second price to sell)
-async function getSecondAskPrice(symbol: string): Promise<number | null> {
+// Helper: Get second ask price from MEXC orderbook (second price to sell) - returns STRING to preserve precision
+async function getSecondAskPrice(symbol: string): Promise<string | null> {
   try {
     const logger = globalMastra?.getLogger();
     logger?.info(`📊 Fetching second ask price (second SELL price) for ${symbol}`);
@@ -160,10 +160,13 @@ async function getSecondAskPrice(symbol: string): Promise<number | null> {
     // Check if response has asks array with at least 2 elements
     if (Array.isArray(data.asks) && data.asks.length > 1) {
       // Second element is second best ask (asks[1])
-      const secondAsk = parseFloat(data.asks[1][0]);
-      logger?.info(`💰 Second ask found at asks[1]: ${secondAsk} for ${symbol}`);
-      logger?.info(`🔍 DEBUG asks[0]=${data.asks[0][0]}, asks[1]=${data.asks[1][0]}`);
-      return secondAsk;
+      // Keep as STRING to preserve precision for MEXC API
+      const secondAskRaw = data.asks[1][0];
+      const secondAskNumeric = parseFloat(secondAskRaw);
+      logger?.info(`💰 Second ask found at asks[1] (RAW STRING): "${secondAskRaw}"`);
+      logger?.info(`💰 Second ask (numeric): ${secondAskNumeric}`);
+      logger?.info(`🔍 DEBUG asks[0]="${data.asks[0][0]}", asks[1]="${data.asks[1][0]}"`);
+      return secondAskRaw; // Return STRING not number
     }
     
     logger?.error(`❌ Not enough asks in API response for ${symbol}`);
