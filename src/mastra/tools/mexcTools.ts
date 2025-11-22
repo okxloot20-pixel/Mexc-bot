@@ -26,6 +26,7 @@ function createMexcSignature(params: Record<string, any>, secretKey: string): st
 }
 
 // Helper function to make authenticated MEXC API calls with u_id
+// u_id format: IP:PORT:TOKEN (e.g., 156.246.241.55:63016:uYgG5GfzfZFWGZnW)
 export async function mexcApiCall(
   endpoint: string,
   method: string,
@@ -41,7 +42,8 @@ export async function mexcApiCall(
     timestamp,
   };
 
-  // MEXC authentication headers - use u_id for authentication
+  // MEXC uses u_id directly as authentication token
+  // Format: u_id is set as cookie value
   const headers: Record<string, string> = {
     "Content-Type": "application/json",
     "Accept": "application/json",
@@ -55,9 +57,8 @@ export async function mexcApiCall(
     "Sec-Fetch-Dest": "empty",
     "Sec-Fetch-Mode": "cors",
     "Sec-Fetch-Site": "same-origin",
-    // u_id authentication headers
-    "X-U-ID": uId,
-    "Cookie": `u_id=${uId}; path=/`,
+    // u_id must be sent as cookie - MEXC validates this for authentication
+    "Cookie": `u_id=${uId}`,
   };
 
   const fetchOptions: RequestInit = {
@@ -74,8 +75,13 @@ export async function mexcApiCall(
     : `${baseUrl}${endpoint}`;
 
   try {
+    // Make request with u_id authentication
     const response = await fetch(url, fetchOptions);
     const responseText = await response.text();
+    
+    console.log(`🔌 MEXC API: ${method} ${endpoint} → ${response.status}`);
+    console.log(`   u_id: ${uId.substring(0, 20)}...`);
+    console.log(`   Response: ${responseText.substring(0, 200)}`);
     
     if (!response.ok) {
       // Parse error response if possible
@@ -86,6 +92,7 @@ export async function mexcApiCall(
       } catch (e) {
         errorMessage = `MEXC API error: ${response.status} - ${responseText.substring(0, 100)}`;
       }
+      console.error(`❌ ${errorMessage}`);
       throw new Error(errorMessage);
     }
 

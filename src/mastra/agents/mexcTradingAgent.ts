@@ -140,13 +140,18 @@ export async function parseAndExecuteCommand(message: string, userId: string, ma
       // Just /register - show help
       return `📝 *Регистрация аккаунта MEXC*
 
-Отправь данные в формате:
-\`/register ACCOUNT_NUM U_ID [PROXY_URL]\`
+1️⃣ Открой MEXC в браузере: https://contract.mexc.com
+2️⃣ Открой DevTools (F12) → Application → Cookies
+3️⃣ Найди cookie с именем *u_id* 
+4️⃣ Скопируй её VALUE (не имя!) - это строка вида: 156.246.241.55:63016:xxx
 
-U_ID находится в девтулах браузера → Application → Cookies → u_id
+Отправь данные в формате:
+\`/register ACCOUNT_NUM U_ID [PROXY]\`
 
 Пример:
-\`/register 474 156.246.241.55:63016:uYgG5GfzfZFWGZnW\``;
+\`/register 474 156.246.241.55:63016:uYgG5GfzfZFWGZnW\`
+
+⚠️ U_ID истекает после выхода из браузера - скопируй свежий!`;
     } else {
       // /register with parameters - save to database
       const accountNum = parseInt(parts[1]);

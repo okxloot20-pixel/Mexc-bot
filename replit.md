@@ -32,10 +32,19 @@ The bot uses **direct command parsing** with **real MEXC API calls**:
 **Implementation Details**:
 - Accounts stored in PostgreSQL (`mexc_accounts` table) with u_id and proxy settings
 - Each command gets accounts from DB and makes authenticated MEXC API requests
-- u_id extracted from browser cookies, used in API calls for authentication (format: `IP:PORT:TOKEN`)
+- u_id extracted from MEXC browser cookies, used in API calls for authentication
+- u_id format: `IP:PORT:TOKEN` (e.g., `156.246.241.55:63016:uYgG5GfzfZFWGZnW`)
+- u_id is a **session token** - expires when you close browser or log out
 - Errors handled gracefully with per-account failure reporting
 
-**Rationale**: Trading bots need instant responses with real execution. Direct API calls eliminate LLM latency while maintaining accuracy and multi-account control.
+**How to Get Fresh u_id**:
+1. Go to https://contract.mexc.com and log in
+2. Open DevTools (F12) → Application tab → Cookies → https://contract.mexc.com
+3. Find the cookie named `u_id`
+4. Copy its **VALUE** (the token, not the name)
+5. Use `/register` to save it with your account
+
+**Rationale**: Trading bots need instant responses with real execution. Direct API calls via browser session eliminate API complexity while maintaining accuracy and multi-account control.
 
 ## Telegram Webhook Integration
 
@@ -59,8 +68,9 @@ The bot uses **direct command parsing** with **real MEXC API calls**:
 - ✅ Chat validation working
 - ✅ Messages delivering instantly (< 200ms)
 - ✅ Command parameter parsing: `/register ACCOUNT_NUM U_ID [PROXY_URL]`
-- ✅ Real MEXC API integration using u_id authentication (November 22, 2025)
+- ✅ Real MEXC API integration using u_id from cookies (November 22, 2025)
 - ✅ Full support for all trading commands with optional parameters
+- ⚠️ **IMPORTANT**: u_id is a session token that expires. Must get fresh u_id from MEXC browser cookies for each account
 
 ## Durable Execution with Inngest
 
