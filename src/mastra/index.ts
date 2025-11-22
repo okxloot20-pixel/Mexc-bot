@@ -400,6 +400,11 @@ export const mastra = new Mastra({
                       resize_keyboard: true,
                       one_time_keyboard: false
                     };
+                  } else if (parsedResponse.type === "menu" && parsedResponse.keyboard) {
+                    payload.text = parsedResponse.text;
+                    payload.reply_markup = {
+                      inline_keyboard: parsedResponse.keyboard
+                    };
                   }
                 } catch (e) {
                   // Not JSON, treat as plain text response
