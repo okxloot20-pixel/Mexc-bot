@@ -228,25 +228,13 @@ export async function parseAndExecuteCommand(message: string, userId: string, ma
   // Help/Start
   if (cmd === "/start" || cmd === "/help") {
     return JSON.stringify({
-      type: "menu",
+      type: "keyboard_menu",
       text: "🤖 *Mexc Futures Trading Bot*",
       keyboard: [
-        [
-          { text: "📈 Трейдинг", callback_data: "trading" },
-          { text: "📊 Позиции", callback_data: "positions" }
-        ],
-        [
-          { text: "👤 Аккаунт", callback_data: "account" },
-          { text: "📦 Ордеры", callback_data: "orders" }
-        ],
-        [
-          { text: "🎯 Подписка", callback_data: "subscription" }
-        ],
-        [
-          { text: "🚨 Сигналы", callback_data: "signals" },
-          { text: "⚙️ Настройки", callback_data: "settings" },
-          { text: "ℹ️ Help", callback_data: "help" }
-        ]
+        ["📈 Трейдинг", "📊 Позиции"],
+        ["👤 Аккаунт", "📦 Ордеры"],
+        ["🎯 Подписка"],
+        ["🚨 Сигналы", "⚙️ Настройки", "ℹ️ Help"]
       ]
     });
   }
@@ -520,27 +508,114 @@ U_ID: ${uId.substring(0, 30)}...
     return `✅ *Все ордера отменены*`;
   }
   
+  // Handle menu button clicks
+  if (message === "📈 Трейдинг") {
+    return JSON.stringify({
+      type: "keyboard_menu",
+      text: "📈 *Трейдинг*",
+      keyboard: [
+        ["🟢 LONG лимит", "🔴 SHORT лимит"],
+        ["🟢 LONG маркет", "🔴 SHORT маркет"],
+        ["❌ Закрыть позицию"],
+        ["← Назад"]
+      ]
+    });
+  }
+  
+  if (message === "👤 Аккаунт") {
+    return JSON.stringify({
+      type: "keyboard_menu",
+      text: "👤 *Аккаунт*",
+      keyboard: [
+        ["📋 Регистрация", "📊 Мои аккаунты"],
+        ["💰 Баланс"],
+        ["← Назад"]
+      ]
+    });
+  }
+  
+  if (message === "📊 Позиции") {
+    return JSON.stringify({
+      type: "keyboard_menu",
+      text: "💼 *Открытые позиции*\n\nОтправь: /positions",
+      keyboard: [
+        ["← Назад"]
+      ]
+    });
+  }
+  
+  if (message === "📦 Ордеры") {
+    return JSON.stringify({
+      type: "keyboard_menu",
+      text: "📦 *Управление ордерами*",
+      keyboard: [
+        ["← Назад"]
+      ]
+    });
+  }
+  
+  if (message === "🎯 Подписка") {
+    return JSON.stringify({
+      type: "keyboard_menu",
+      text: "🎯 *Подписка*\n\nФункция в разработке",
+      keyboard: [
+        ["← Назад"]
+      ]
+    });
+  }
+  
+  if (message === "🚨 Сигналы") {
+    return JSON.stringify({
+      type: "keyboard_menu",
+      text: "🚨 *Сигналы*\n\nФункция в разработке",
+      keyboard: [
+        ["← Назад"]
+      ]
+    });
+  }
+  
+  if (message === "⚙️ Настройки") {
+    return JSON.stringify({
+      type: "keyboard_menu",
+      text: "⚙️ *Настройки*\n\nФункция в разработке",
+      keyboard: [
+        ["← Назад"]
+      ]
+    });
+  }
+  
+  if (message === "ℹ️ Help") {
+    return JSON.stringify({
+      type: "keyboard_menu",
+      text: "ℹ️ *Справка*\n\nОтправь: /help",
+      keyboard: [
+        ["← Назад"]
+      ]
+    });
+  }
+  
+  if (message === "← Назад") {
+    return JSON.stringify({
+      type: "keyboard_menu",
+      text: "🤖 *Mexc Futures Trading Bot*",
+      keyboard: [
+        ["📈 Трейдинг", "📊 Позиции"],
+        ["👤 Аккаунт", "📦 Ордеры"],
+        ["🎯 Подписка"],
+        ["🚨 Сигналы", "⚙️ Настройки", "ℹ️ Help"]
+      ]
+    });
+  }
+  
   // Show menu for empty message or unknown command
   return JSON.stringify({
-    type: "menu",
+    type: "keyboard_menu",
     text: "🤖 *Mexc Futures Trading Bot*",
     keyboard: [
-      [
-        { text: "📈 Трейдинг", callback_data: "trading" },
-        { text: "📊 Позиции", callback_data: "positions" }
-      ],
-      [
-        { text: "👤 Аккаунт", callback_data: "account" },
-        { text: "📦 Ордеры", callback_data: "orders" }
-      ],
-      [
-        { text: "🎯 Подписка", callback_data: "subscription" }
-      ],
-      [
-        { text: "🚨 Сигналы", callback_data: "signals" },
-        { text: "⚙️ Настройки", callback_data: "settings" },
-        { text: "ℹ️ Help", callback_data: "help" }
-      ]
+      ["📈 Трейдинг", "📊 Позиции"],
+      ["👤 Аккаунт", "📦 Ордеры"],
+      ["🎯 Подписка"],
+      ["🚨 Сигналы", "⚙️ Настройки", "ℹ️ Help"]
     ]
   });
 }

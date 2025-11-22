@@ -388,10 +388,12 @@ export const mastra = new Mastra({
                 
                 try {
                   const parsedResponse = JSON.parse(response);
-                  if (parsedResponse.type === "menu" && parsedResponse.keyboard) {
+                  if (parsedResponse.type === "keyboard_menu" && parsedResponse.keyboard) {
                     payload.text = parsedResponse.text;
                     payload.reply_markup = {
-                      inline_keyboard: parsedResponse.keyboard
+                      keyboard: parsedResponse.keyboard,
+                      resize_keyboard: true,
+                      one_time_keyboard: false
                     };
                   }
                 } catch (e) {
