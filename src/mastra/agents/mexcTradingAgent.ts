@@ -330,50 +330,6 @@ U_ID: ${uId.substring(0, 30)}...
     return `✅ *Лимит LONG ордер создаётся*\n\n${result}`;
   }
   
-  // Open SHORT limit
-  if (cmd.startsWith("/s ")) {
-    const parts = message.trim().split(/\s+/);
-    
-    // Check if first param is a number (price) or symbol
-    const firstParam = parts[1] ? parts[1].toUpperCase() : "BTC";
-    const isFirstParamNumber = !isNaN(parseFloat(firstParam));
-    
-    let symbol: string;
-    let price: number;
-    let size: number | undefined;
-    let leverage: number | undefined;
-    
-    if (isFirstParamNumber) {
-      // Format: /s PRICE SYMBOL [SIZE] [LEVERAGE]
-      price = parseFloat(firstParam);
-      symbol = parts[2] ? parts[2].toUpperCase() : "BTC";
-      size = parts[3] ? parseInt(parts[3]) : undefined;
-      leverage = parts[4] ? parseInt(parts[4]) : undefined;
-    } else {
-      // Format: /s SYMBOL [SIZE] [LEVERAGE] - use second bid price automatically
-      symbol = firstParam;
-      size = parts[2] ? parseInt(parts[2]) : undefined;
-      leverage = parts[3] ? parseInt(parts[3]) : undefined;
-      
-      // Get second bid price from orderbook
-      const apiSymbol = `${symbol}USDT`;
-      const secondBidPrice = await getSecondBidPrice(apiSymbol);
-      
-      if (secondBidPrice === null) {
-        return `❌ Не удалось получить цену из стакана для ${apiSymbol}`;
-      }
-      price = secondBidPrice;
-    }
-    
-    const result = await executeToolDirect(openShortLimitTool, {
-      telegramUserId: userId,
-      symbol,
-      price,
-      size,
-      leverage,
-    });
-    return `✅ *Лимит SHORT ордер создаётся*\n\n${result}`;
-  }
   
   // Open SHORT limit at second bid price from orderbook
   if (cmd.startsWith("/sb")) {
