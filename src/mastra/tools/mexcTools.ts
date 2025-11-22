@@ -519,8 +519,13 @@ export const getPositionsTool = createTool({
       for (const account of accounts) {
         try {
           const client = createMexcClient(account.uId);
+          logger?.info(`🔍 [getPositionsTool] Fetching positions for account ${account.accountNumber}`);
           const posResponse = await client.getOpenPositions("");
+          logger?.info(`📝 [getPositionsTool] Response type:`, typeof posResponse);
+          logger?.info(`📝 [getPositionsTool] Response:`, JSON.stringify(posResponse));
+          
           const positions = Array.isArray(posResponse) ? posResponse : [];
+          logger?.info(`📝 [getPositionsTool] Positions array length: ${positions.length}`);
 
           if (positions.length === 0) {
             results.push(`👤 Аккаунт ${account.accountNumber}: нет открытых позиций\n`);
@@ -537,6 +542,7 @@ export const getPositionsTool = createTool({
             results.push(`${pnlEmoji} ${(pos as any).symbol} | ${sideText} ${holdVol}кт | ${pnlUsd > 0 ? "+" : ""}${pnlUsd.toFixed(2)}$ | ${pnlPercent > 0 ? "+" : ""}${pnlPercent.toFixed(2)}%`);
           }
         } catch (error: any) {
+          logger?.error(`❌ [getPositionsTool] Error fetching positions for account ${account.accountNumber}`, { error: error.message });
           results.push(`❌ Аккаунт ${account.accountNumber}: ${error.message}`);
         }
       }
