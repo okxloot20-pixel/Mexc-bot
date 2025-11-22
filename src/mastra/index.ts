@@ -227,18 +227,26 @@ export const mastra = new Mastra({
             telegramUserId: triggerInfo.params.telegramUserId,
           });
 
-          const threadId = `telegram-${triggerInfo.params.telegramUserId}-${Date.now()}`;
+          try {
+            const threadId = `telegram-${triggerInfo.params.telegramUserId}-${Date.now()}`;
 
-          const run = await telegramTradingWorkflow.createRunAsync();
-          await run.start({
-            inputData: {
-              threadId,
-              userName: triggerInfo.params.userName,
-              telegramUserId: triggerInfo.params.telegramUserId,
-              message: triggerInfo.params.message,
-              chatId: triggerInfo.params.chatId,
-            },
-          });
+            const run = await telegramTradingWorkflow.createRunAsync();
+            await run.start({
+              inputData: {
+                threadId,
+                userName: triggerInfo.params.userName,
+                telegramUserId: triggerInfo.params.telegramUserId,
+                message: triggerInfo.params.message,
+                chatId: triggerInfo.params.chatId,
+              },
+            });
+            
+            logger?.info("✅ [Telegram Trigger] Workflow started successfully");
+          } catch (error: any) {
+            logger?.error("❌ [Telegram Trigger] Error starting workflow", {
+              error: error.message,
+            });
+          }
         },
       }),
     ],
