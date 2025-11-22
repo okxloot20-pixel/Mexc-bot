@@ -29,9 +29,6 @@ The bot uses **direct command parsing** with **real MEXC API calls**:
 - **15+ trading commands**: /lm, /sm, /l, /s, /sb, /close, /closebs, /lc, /sc, /lcm, /scm, /positions, /orders, /balance, /cancel
 - **Account management**: /register (saves u_id), /accounts (lists from DB), /settings
 
-**Updated Commands** (November 22, 2025):
-- `/sb SYMBOL [SIZE] [LEVERAGE]` - Open SHORT limit at **second bid** price from orderbook
-- `/closebs SYMBOL [SIZE]` - Close SHORT position at **second ask** price from orderbook
 
 **Implementation Details**:
 - Accounts stored in PostgreSQL (`mexc_accounts` table) with u_id and proxy settings
