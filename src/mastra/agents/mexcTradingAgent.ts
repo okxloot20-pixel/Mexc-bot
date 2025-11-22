@@ -539,16 +539,15 @@ U_ID: ${uId.substring(0, 30)}...
 Используйте /register для добавления`;
       }
       
-      const keyboard = accounts.map((acc) => {
+      const buttons = accounts.map((acc) => {
         const status = acc.isActive ? "✅" : "❌";
-        return [`${status} ${acc.accountNumber}`];
+        return `${status} ${acc.accountNumber}`;
       });
-      keyboard.push(["← Назад"]);
       
       return JSON.stringify({
         type: "keyboard_menu",
         text: "📝 *Твои аккаунты MEXC*\n\nНажимай на кнопку, чтобы включить / выключать аккаунт.\nВсе торговые команды выполняются на активных аккаунтах.",
-        keyboard
+        keyboard: [buttons, ["← Назад"]]
       });
     } catch (error: any) {
       return `❌ Ошибка при получении аккаунтов: ${error.message}`;
@@ -586,16 +585,15 @@ U_ID: ${uId.substring(0, 30)}...
         where: eq(mexcAccounts.telegramUserId, userId),
       });
       
-      const keyboard = accounts.map((acc) => {
+      const buttons = accounts.map((acc) => {
         const status = acc.isActive ? "✅" : "❌";
-        return [`${status} ${acc.accountNumber}`];
+        return `${status} ${acc.accountNumber}`;
       });
-      keyboard.push(["← Назад"]);
       
       return JSON.stringify({
         type: "keyboard_menu",
         text: resultMsg + "\n\n📝 *Твои аккаунты MEXC*\n\nНажимай на кнопку, чтобы включить / выключать аккаунт.\nВсе торговые команды выполняются на активных аккаунтах.",
-        keyboard
+        keyboard: [buttons, ["← Назад"]]
       });
     } catch (error: any) {
       return `❌ Ошибка: ${error.message}`;
