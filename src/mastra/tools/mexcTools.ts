@@ -521,24 +521,27 @@ export const getPositionsTool = createTool({
           const client = createMexcClient(account.uId);
           logger?.info(`🔍 [getPositionsTool] Fetching positions for account ${account.accountNumber}`);
           const posResponse = await client.getOpenPositions("");
-          logger?.info(`📝 [getPositionsTool] Response type:`, typeof posResponse);
-          logger?.info(`📝 [getPositionsTool] Response:`, JSON.stringify(posResponse));
           
-          const positions = Array.isArray(posResponse) ? posResponse : [];
+          // Extract positions array from response object (data.data contains the array)
+          const positions = (posResponse as any)?.data || [];
           logger?.info(`📝 [getPositionsTool] Positions array length: ${positions.length}`);
 
           if (positions.length === 0) {
-            results.push(`👤 Аккаунт ${account.accountNumber}: нет открытых позиций\n`);
+            results.push(`👤 Аккаунт ${account.accountNumber}: нет открытых позиций`);
             continue;
           }
 
           results.push(`👤 *Аккаунт ${account.accountNumber}:*`);
           for (const pos of positions) {
-            const sideText = (pos as any).side === 1 ? "🟢 LONG" : "🔴 SHORT";
-            const pnlUsd = (pos as any).pnl || 0;
-            const pnlPercent = (pos as any).pnlRate || 0;
+            // Determine side: positionType 1 = LONG, 2 = SHORT
+            const sideText = (pos as any).positionType === 1 ? "🟢 LONG" : "🔴 SHORT";
+            
+            // Calculate PnL in USD and percentage
+            const pnlUsd = (pos as any).realised || 0;
+            const pnlPercent = ((pos as any).profitRatio || 0) * 100;
             const pnlEmoji = pnlUsd > 0 ? "📈" : "📉";
             const holdVol = (pos as any).holdVol || 0;
+            
             results.push(`${pnlEmoji} ${(pos as any).symbol} | ${sideText} ${holdVol}кт | ${pnlUsd > 0 ? "+" : ""}${pnlUsd.toFixed(2)}$ | ${pnlPercent > 0 ? "+" : ""}${pnlPercent.toFixed(2)}%`);
           }
         } catch (error: any) {
