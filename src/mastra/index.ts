@@ -227,6 +227,129 @@ export const mastra = new Mastra({
               console.log("🔍 [TELEGRAM WEBHOOK RECEIVED]", JSON.stringify(payload));
               logger?.debug("🔍 [Telegram] Full payload received", JSON.stringify(payload, null, 2));
 
+              // Handle callback query (button clicks)
+              if (payload.callback_query) {
+                const callbackData = payload.callback_query.data;
+                const userId = String(payload.callback_query.from.id);
+                const chatId = payload.callback_query.message.chat.id;
+                const messageId = payload.callback_query.message.message_id;
+                
+                console.log(`🔘 Callback: "${callbackData}", UserID: ${userId}`);
+                logger?.info("🔘 [Telegram] Callback query", { callbackData, userId, chatId });
+                
+                // Generate response based on callback
+                let response = "";
+                if (callbackData === "trading") {
+                  response = JSON.stringify({
+                    type: "menu",
+                    text: "📈 *Трейдинг*",
+                    keyboard: [
+                      [
+                        { text: "🟢 LONG лимит", callback_data: "long_limit" },
+                        { text: "🔴 SHORT лимит", callback_data: "short_limit" }
+                      ],
+                      [
+                        { text: "🟢 LONG маркет", callback_data: "long_market" },
+                        { text: "🔴 SHORT маркет", callback_data: "short_market" }
+                      ],
+                      [
+                        { text: "❌ Закрыть позицию", callback_data: "close_position" }
+                      ],
+                      [
+                        { text: "← Назад", callback_data: "back_to_main" }
+                      ]
+                    ]
+                  });
+                } else if (callbackData === "positions") {
+                  response = "💼 Открытые позиции\n\nОтправь: /positions";
+                } else if (callbackData === "account") {
+                  response = JSON.stringify({
+                    type: "menu",
+                    text: "👤 *Аккаунт*",
+                    keyboard: [
+                      [
+                        { text: "📋 Регистрация", callback_data: "register" },
+                        { text: "📊 Мои аккаунты", callback_data: "my_accounts" }
+                      ],
+                      [
+                        { text: "💰 Баланс", callback_data: "balance" }
+                      ],
+                      [
+                        { text: "← Назад", callback_data: "back_to_main" }
+                      ]
+                    ]
+                  });
+                } else if (callbackData === "orders") {
+                  response = "📦 Управление ордерами\n\nОтправь: /orders";
+                } else if (callbackData === "subscription") {
+                  response = "🎯 *Подписка*\n\nФункция в разработке";
+                } else if (callbackData === "signals") {
+                  response = "🚨 *Сигналы*\n\nФункция в разработке";
+                } else if (callbackData === "settings") {
+                  response = "⚙️ *Настройки*\n\nФункция в разработке";
+                } else if (callbackData === "help") {
+                  response = "ℹ️ *Справка*\n\nОтправь: /help";
+                } else if (callbackData === "back_to_main") {
+                  response = JSON.stringify({
+                    type: "menu",
+                    text: "🤖 *Mexc Futures Trading Bot*",
+                    keyboard: [
+                      [
+                        { text: "📈 Трейдинг", callback_data: "trading" },
+                        { text: "📊 Позиции", callback_data: "positions" }
+                      ],
+                      [
+                        { text: "👤 Аккаунт", callback_data: "account" },
+                        { text: "📦 Ордеры", callback_data: "orders" }
+                      ],
+                      [
+                        { text: "🎯 Подписка", callback_data: "subscription" }
+                      ],
+                      [
+                        { text: "🚨 Сигналы", callback_data: "signals" },
+                        { text: "⚙️ Настройки", callback_data: "settings" },
+                        { text: "ℹ️ Help", callback_data: "help" }
+                      ]
+                    ]
+                  });
+                } else {
+                  response = "📨 Неизвестная команда";
+                }
+                
+                // Edit message with new content
+                if (process.env.TELEGRAM_BOT_TOKEN) {
+                  const botToken = process.env.TELEGRAM_BOT_TOKEN;
+                  const apiUrl = `https://api.telegram.org/bot${botToken}/editMessageText`;
+                  
+                  let editPayload: any = {
+                    chat_id: chatId,
+                    message_id: messageId,
+                    text: response,
+                    parse_mode: "Markdown",
+                  };
+                  
+                  try {
+                    const parsedResponse = JSON.parse(response);
+                    if (parsedResponse.type === "menu" && parsedResponse.keyboard) {
+                      editPayload.text = parsedResponse.text;
+                      editPayload.reply_markup = {
+                        inline_keyboard: parsedResponse.keyboard
+                      };
+                    }
+                  } catch (e) {
+                    editPayload.parse_mode = "Markdown";
+                  }
+                  
+                  await fetch(apiUrl, {
+                    method: "POST",
+                    headers: { "Content-Type": "application/json" },
+                    body: JSON.stringify(editPayload),
+                  });
+                }
+                
+                return c.text("OK", 200);
+              }
+
               const message = payload.message?.text || "";
               const userId = String(payload.message?.from?.id || "");
               let chatId = payload.message?.chat?.id;
