@@ -31,7 +31,11 @@ The bot uses **direct command parsing** with **real MEXC API calls**:
 
 **Updated Commands** (November 22, 2025):
 - `/sb SYMBOL [SIZE] [LEVERAGE]` - Open SHORT limit at **second bid** price from orderbook
-- `/closebs SYMBOL [SIZE]` - Close SHORT position at **second ask** price from orderbook (limit buy order at 2nd seller price)
+- `/closebs SYMBOL [SIZE]` - Close SHORT position at **second ask** price from orderbook with automatic fallbacks:
+  - **Fallback 1**: If only 1 ask available → use best ask (asks[0])
+  - **Fallback 2**: If no asks → use best bid (bids[0])
+  - **Fallback 3**: Try alternative symbol format (SYMBOLUSDT vs SYMBOL_USDT)
+  - If no orderbook data → helpful error suggesting /close (market order) or /positions
 
 **Implementation Details**:
 - Accounts stored in PostgreSQL (`mexc_accounts` table) with u_id and proxy settings
