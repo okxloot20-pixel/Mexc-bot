@@ -53,6 +53,77 @@ async function executeToolDirect(tool: any, context: any): Promise<string> {
   }
 }
 
+// Helper: Get PnL for a specific symbol
+async function getPositionPnLForSymbol(userId: string, symbol: string): Promise<string> {
+  try {
+    const logger = globalMastra?.getLogger();
+    logger?.info(`📊 Getting PnL for symbol ${symbol} for user ${userId}`);
+    
+    // Get active accounts
+    const accounts = await db.query.mexcAccounts.findMany({
+      where: and(
+        eq(mexcAccounts.telegramUserId, userId),
+        eq(mexcAccounts.isActive, true)
+      ),
+    });
+    
+    if (accounts.length === 0) {
+      return "";
+    }
+    
+    const { MexcFuturesClient } = await import("@max89701/mexc-futures-sdk");
+    
+    const pnlLines: string[] = [];
+    let totalPnlUsd = 0;
+    let countPositions = 0;
+    
+    for (const account of accounts) {
+      try {
+        const client = new MexcFuturesClient({
+          authToken: account.uId,
+          logLevel: "INFO"
+        });
+        
+        const posResponse = await client.getOpenPositions("");
+        const allPositions = Array.isArray(posResponse) ? posResponse : (posResponse as any)?.data || [];
+        
+        // Find position for this symbol
+        const fullSymbol = `${symbol}_USDT`;
+        const position = allPositions.find((p: any) => p.symbol === fullSymbol);
+        
+        if (position) {
+          const pnlUsd = (position as any).realised || 0;
+          const pnlPercent = ((position as any).profitRatio || 0) * 100;
+          const pnlEmoji = pnlUsd > 0 ? "📈" : "📉";
+          const sideText = (position as any).positionType === 1 ? "LONG" : "SHORT";
+          
+          pnlLines.push(`${pnlEmoji} ${sideText}: ${pnlUsd > 0 ? "+" : ""}${pnlUsd.toFixed(2)}$ (${pnlPercent > 0 ? "+" : ""}${pnlPercent.toFixed(2)}%)`);
+          totalPnlUsd += pnlUsd;
+          countPositions++;
+        }
+      } catch (error: any) {
+        logger?.warn(`⚠️ Error getting position for account ${account.accountNumber}`, { error: error.message });
+      }
+    }
+    
+    if (pnlLines.length > 0) {
+      let result = `\n\n📊 *Текущий PnL перед закрытием:*\n`;
+      result += pnlLines.join("\n");
+      if (countPositions > 1) {
+        const totalPnlEmoji = totalPnlUsd > 0 ? "📈" : "📉";
+        result += `\n${totalPnlEmoji} *Итого: ${totalPnlUsd > 0 ? "+" : ""}${totalPnlUsd.toFixed(2)}$*`;
+      }
+      return result;
+    }
+    
+    return "";
+  } catch (error: any) {
+    const logger = globalMastra?.getLogger();
+    logger?.warn(`⚠️ Error getting PnL for symbol ${symbol}`, { error: error.message });
+    return "";
+  }
+}
+
 // Helper: Get best bid price from MEXC orderbook
 async function getBestBidPrice(symbol: string): Promise<number | null> {
   try {
@@ -410,13 +481,15 @@ U_ID: ${uId.substring(0, 30)}...
       return `❌ Не удалось получить цену из стакана для ${apiSymbol}`;
     }
     
+    const pnlInfo = await getPositionPnLForSymbol(userId, symbol);
+    
     const result = await executeToolDirect(closeShortAtPriceTool, {
       telegramUserId: userId,
       symbol,
       price: secondAskPrice,
       size,
     });
-    return `✅ *SHORT закрывается по 2nd ask ${secondAskPrice}*\n\n${result}`;
+    return `✅ *SHORT закрывается по 2nd ask ${secondAskPrice}*${pnlInfo}\n\n${result}`;
   }
   
   // Close position
@@ -438,7 +511,10 @@ U_ID: ${uId.substring(0, 30)}...
     const parts = message.trim().split(/\s+/);
     const symbol = parts[1] ? parts[1].toUpperCase() : "BTC";
     const size = parts[2] || "10";
-    return `✅ *LONG позиция закрыта по рынку*
+    
+    const pnlInfo = await getPositionPnLForSymbol(userId, symbol);
+    
+    return `✅ *LONG позиция закрыта по рынку*${pnlInfo}
 
 Символ: ${symbol}_USDT
 Размер: ${size} контрактов`;
@@ -449,7 +525,10 @@ U_ID: ${uId.substring(0, 30)}...
     const parts = message.trim().split(/\s+/);
     const symbol = parts[1] ? parts[1].toUpperCase() : "BTC";
     const size = parts[2] || "10";
-    return `✅ *SHORT позиция закрыта по рынку*
+    
+    const pnlInfo = await getPositionPnLForSymbol(userId, symbol);
+    
+    return `✅ *SHORT позиция закрыта по рынку*${pnlInfo}
 
 Символ: ${symbol}_USDT
 Размер: ${size} контрактов`;
