@@ -345,6 +345,31 @@ export const mastra = new Mastra({
         }),
 });
 
+// Clear Telegram bot commands to remove autocomplete suggestions
+async function clearTelegramCommands() {
+  const botToken = process.env.TELEGRAM_BOT_TOKEN;
+  if (!botToken) return;
+  
+  try {
+    const response = await fetch(`https://api.telegram.org/bot${botToken}/setMyCommands`, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ commands: [] }),
+    });
+    
+    if (response.ok) {
+      console.log("✅ Telegram bot commands cleared");
+    } else {
+      console.log("⚠️ Failed to clear Telegram commands");
+    }
+  } catch (error: any) {
+    console.log("⚠️ Error clearing Telegram commands:", error.message);
+  }
+}
+
+// Clear commands on startup
+clearTelegramCommands();
+
 /*  Sanity check 1: Throw an error if there are more than 1 workflows.  */
 // !!!!!! Do not remove this check. !!!!!!
 if (Object.keys(mastra.getWorkflows()).length > 1) {
