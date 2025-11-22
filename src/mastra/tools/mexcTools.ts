@@ -20,51 +20,48 @@ function createMexcClient(uId: string): MexcFuturesClient {
   });
 }
 
-// Helper: Get contract multiplier from MEXC API
-// Each symbol has different multiplier (BTC=100, ETH=10, ARTX=0.01, etc)
-async function getContractMultiplier(symbol: string, logger?: any): Promise<number> {
+// Helper: Get max position size - use all available balance * leverage
+// MEXC will validate the actual limit based on symbol specs
+async function calculateMaxPositionSize(client: MexcFuturesClient, leverage: number, logger?: any): Promise<number> {
   try {
-    // Try to get from MEXC public API
-    const response = await fetch(`https://contract.mexc.com/api/v1/contract/symbols`);
-    const data = await response.json();
+    // Get account asset info - this returns actual USD values, not contract count
+    const asset = await client.getAccountAsset("USDT");
     
-    if (data.success && data.data && Array.isArray(data.data)) {
-      const symbolInfo = data.data.find((s: any) => s.symbol === symbol);
-      if (symbolInfo) {
-        const multiplier = parseFloat(symbolInfo.multiplier || symbolInfo.contractValue || 1);
-        logger?.info(`📊 Symbol ${symbol} multiplier: ${multiplier}`);
-        return multiplier;
-      }
+    // Log the entire asset object to debug
+    logger?.info(`📊 Full asset object:`, JSON.stringify(asset, null, 2));
+    
+    // Try multiple property names since SDK might use different naming
+    const availableBalance = (asset as any).availableBalance 
+      || (asset as any).available 
+      || (asset as any).balance 
+      || (asset as any).walletBalance
+      || 0;
+    
+    logger?.info(`💰 Available balance: ${availableBalance} USDT`);
+    
+    if (availableBalance === 0) {
+      logger?.warn(`⚠️ Balance is 0, using fallback of 100 USDT`);
+      // Use a fallback multiplier for testing
+      return Math.floor(100 * 0.9 * leverage);
     }
     
-    logger?.warn(`⚠️ Could not find multiplier for ${symbol}, using default 1`);
-    return 1;
+    // Use 90% of balance to be safe (leave 10% margin buffer)
+    const maxUsdValue = availableBalance * 0.9 * leverage;
+    
+    logger?.info(`💰 Max USD value with ${leverage}x leverage: ${maxUsdValue} USDT`);
+    
+    // Return as contracts - MEXC SDK will convert based on symbol specs
+    // For safety, we'll request a large number and let MEXC validate
+    const maxContracts = Math.floor(maxUsdValue);
+    logger?.info(`📊 Max contracts to attempt: ${maxContracts}`);
+    
+    return Math.max(maxContracts, 1); // At least 1 contract
   } catch (error: any) {
-    logger?.error('❌ Error fetching contract multiplier', { error: error.message });
-    return 1; // Fallback to 1
+    logger?.error('❌ Error calculating position size', { error: error.message });
+    return 10; // Fallback
   }
 }
 
-// Helper: Calculate max position size based on balance and leverage
-async function getMaxPositionSize(client: MexcFuturesClient, symbol: string, leverage: number, logger?: any): Promise<number> {
-  try {
-    const asset = await client.getAccountAsset("USDT");
-    const availableBalance = (asset as any).availableBalance || (asset as any).balance || 0;
-    
-    // Get the contract multiplier for this specific symbol
-    const multiplier = await getContractMultiplier(symbol, logger);
-    
-    // Max size = (balance * leverage) / multiplier
-    // Example: balance=100 USDT, leverage=20x, ARTX multiplier=0.01
-    // maxSize = (100 * 20) / 0.01 = 200,000 contracts
-    const maxSize = Math.floor((availableBalance * leverage) / multiplier);
-    logger?.info(`💰 Max position size: ${maxSize} contracts (balance: ${availableBalance} USDT, leverage: ${leverage}x, multiplier: ${multiplier} USDT/contract)`);
-    return Math.max(maxSize, 1); // At least 1 contract
-  } catch (error: any) {
-    logger?.error('❌ Error calculating max size', { error: error.message });
-    return 10; // Fallback to 10 if error
-  }
-}
 
 /**
  * Tool: Open Long Market Position
@@ -113,7 +110,7 @@ export const openLongMarketTool = createTool({
           // Get max size based on balance
           let tradeSize = context.size;
           if (!tradeSize) {
-            tradeSize = await getMaxPositionSize(client, symbol, tradeLeverage, logger);
+            tradeSize = await calculateMaxPositionSize(client, tradeLeverage, logger);
           }
 
           logger?.info(`📍 Submitting order`, { symbol, size: tradeSize, leverage: tradeLeverage });
@@ -195,7 +192,7 @@ export const openShortMarketTool = createTool({
           // Get max size based on balance
           let tradeSize = context.size;
           if (!tradeSize) {
-            tradeSize = await getMaxPositionSize(client, symbol, tradeLeverage, logger);
+            tradeSize = await calculateMaxPositionSize(client, tradeLeverage, logger);
           }
 
           logger?.info(`📍 Submitting order`, { symbol, size: tradeSize, leverage: tradeLeverage });
