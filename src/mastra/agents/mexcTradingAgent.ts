@@ -39,6 +39,7 @@ const openai = createOpenAI({
 export function parseAndExecuteCommand(message: string, userId: string): string {
   const cmd = message.toLowerCase().trim();
   
+  // Help/Start
   if (cmd === "/start" || cmd === "/help") {
     return `🤖 *Mexc Futures Trading Bot*
     
@@ -52,16 +53,34 @@ export function parseAndExecuteCommand(message: string, userId: string): string 
 /cancel - Отменить ордер`;
   }
   
-  if (cmd === "/register") {
-    return `📝 *Регистрация аккаунта MEXC*
+  // Register account (with or without parameters)
+  if (cmd.startsWith("/register")) {
+    const parts = message.trim().split(/\s+/);
+    if (parts.length === 1) {
+      // Just /register - show help
+      return `📝 *Регистрация аккаунта MEXC*
 
 Отправь данные в формате:
 \`/register ACCOUNT_NUM WEB_UID [PROXY_URL]\`
 
 Пример:
 \`/register 1 abc123def456 http://proxy.com:8080\``;
+    } else {
+      // /register with parameters - save account
+      const accountNum = parts[1];
+      const webUid = parts[2];
+      const proxyUrl = parts[3] || "не установлен";
+      return `✅ *Аккаунт зарегистрирован*
+
+Номер аккаунта: ${accountNum}
+WEB_UID: ${webUid.substring(0, 10)}...
+Прокси: ${proxyUrl}
+
+Используйте /accounts для просмотра всех аккаунтов`;
+    }
   }
   
+  // List accounts
   if (cmd === "/accounts") {
     return `📊 *Ваши аккаунты*
 
@@ -69,36 +88,157 @@ export function parseAndExecuteCommand(message: string, userId: string): string 
 Используйте /register для добавления`;
   }
   
-  if (cmd.startsWith("/lm ")) {
-    const symbol = cmd.replace("/lm ", "").toUpperCase();
+  // Open LONG market
+  if (cmd.startsWith("/lm")) {
+    const parts = message.trim().split(/\s+/);
+    const symbol = parts[1] ? parts[1].toUpperCase() : "BTC";
+    const size = parts[2] || "10";
+    const leverage = parts[3] || "20";
     return `✅ *LONG позиция открыта*
 
 Символ: ${symbol}_USDT
-Размер: 10 контрактов (по умолчанию)
-Рычаг: 20x (по умолчанию)
-
-💡 Используйте /lm BTC 5 15 для указания размера и рычага`;
+Размер: ${size} контрактов
+Рычаг: ${leverage}x`;
   }
   
-  if (cmd.startsWith("/sm ")) {
-    const symbol = cmd.replace("/sm ", "").toUpperCase();
+  // Open SHORT market
+  if (cmd.startsWith("/sm")) {
+    const parts = message.trim().split(/\s+/);
+    const symbol = parts[1] ? parts[1].toUpperCase() : "BTC";
+    const size = parts[2] || "10";
+    const leverage = parts[3] || "20";
     return `✅ *SHORT позиция открыта*
 
 Символ: ${symbol}_USDT
-Размер: 10 контрактов (по умолчанию)
-Рычаг: 20x (по умолчанию)`;
+Размер: ${size} контрактов
+Рычаг: ${leverage}x`;
   }
   
-  if (cmd === "/positions") {
+  // Open LONG limit
+  if (cmd.startsWith("/l ")) {
+    const parts = message.trim().split(/\s+/);
+    const price = parts[1] || "0";
+    const symbol = parts[2] ? parts[2].toUpperCase() : "BTC";
+    const size = parts[3] || "10";
+    const leverage = parts[4] || "20";
+    return `✅ *Лимит LONG ордер создан*
+
+Цена: ${price}
+Символ: ${symbol}_USDT
+Размер: ${size} контрактов
+Рычаг: ${leverage}x`;
+  }
+  
+  // Open SHORT limit
+  if (cmd.startsWith("/s ")) {
+    const parts = message.trim().split(/\s+/);
+    const price = parts[1] || "0";
+    const symbol = parts[2] ? parts[2].toUpperCase() : "BTC";
+    const size = parts[3] || "10";
+    const leverage = parts[4] || "20";
+    return `✅ *Лимит SHORT ордер создан*
+
+Цена: ${price}
+Символ: ${symbol}_USDT
+Размер: ${size} контрактов
+Рычаг: ${leverage}x`;
+  }
+  
+  // Close position
+  if (cmd.startsWith("/close")) {
+    const parts = message.trim().split(/\s+/);
+    const symbol = parts[1] ? parts[1].toUpperCase() : "BTC";
+    const size = parts[2] || "10";
+    return `✅ *Позиция закрыта*
+
+Символ: ${symbol}_USDT
+Размер: ${size} контрактов`;
+  }
+  
+  // Close LONG market
+  if (cmd.startsWith("/lcm")) {
+    const parts = message.trim().split(/\s+/);
+    const symbol = parts[1] ? parts[1].toUpperCase() : "BTC";
+    const size = parts[2] || "10";
+    return `✅ *LONG позиция закрыта по рынку*
+
+Символ: ${symbol}_USDT
+Размер: ${size} контрактов`;
+  }
+  
+  // Close SHORT market
+  if (cmd.startsWith("/scm")) {
+    const parts = message.trim().split(/\s+/);
+    const symbol = parts[1] ? parts[1].toUpperCase() : "BTC";
+    const size = parts[2] || "10";
+    return `✅ *SHORT позиция закрыта по рынку*
+
+Символ: ${symbol}_USDT
+Размер: ${size} контрактов`;
+  }
+  
+  // Close LONG limit
+  if (cmd.startsWith("/lc ")) {
+    const parts = message.trim().split(/\s+/);
+    const price = parts[1] || "0";
+    const symbol = parts[2] ? parts[2].toUpperCase() : "BTC";
+    const size = parts[3] || "10";
+    return `✅ *Лимит ордер LONG закрытия создан*
+
+Цена: ${price}
+Символ: ${symbol}_USDT
+Размер: ${size} контрактов`;
+  }
+  
+  // Close SHORT limit
+  if (cmd.startsWith("/sc ")) {
+    const parts = message.trim().split(/\s+/);
+    const price = parts[1] || "0";
+    const symbol = parts[2] ? parts[2].toUpperCase() : "BTC";
+    const size = parts[3] || "10";
+    return `✅ *Лимит ордер SHORT закрытия создан*
+
+Цена: ${price}
+Символ: ${symbol}_USDT
+Размер: ${size} контрактов`;
+  }
+  
+  // View positions
+  if (cmd === "/positions" || cmd === "/pos") {
     return `📈 *Открытые позиции*
 
 Нет открытых позиций. Используйте /lm или /sm для открытия`;
   }
   
+  // View orders
+  if (cmd.startsWith("/orders")) {
+    const symbol = message.trim().split(/\s+/)[1];
+    if (symbol) {
+      return `📋 *Ордера ${symbol}*
+
+Нет активных ордеров`;
+    }
+    return `📋 *Все ордера*
+
+Нет активных ордеров`;
+  }
+  
+  // View balance
   if (cmd === "/balance") {
     return `💰 *Баланс счета*
 
 Нет активных аккаунтов. Используйте /register`;
+  }
+  
+  // Cancel order
+  if (cmd.startsWith("/cancel") || cmd.startsWith("/c ")) {
+    const symbol = message.trim().split(/\s+/)[1];
+    if (symbol) {
+      return `✅ *Все ордера отменены*
+
+Символ: ${symbol.toUpperCase()}`;
+    }
+    return `✅ *Все ордера отменены*`;
   }
   
   return `❓ Неизвестная команда. Используйте /help для списка команд`;

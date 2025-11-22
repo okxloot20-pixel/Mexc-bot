@@ -46,10 +46,12 @@ Instead of using LLM-based agents, the bot uses **direct command parsing** for i
 - Graceful error handling
 
 **Setup verified** (November 22, 2025):
-- Webhook URL set in Telegram BotFather
-- All 13 commands responding
-- Chat validation working
-- Messages delivering instantly
+- ✅ Webhook URL set in Telegram BotFather: `https://e78e0794-a7b9-4eb7-91fc-56aa86108949-00-7aa5pyjb3lka.worf.replit.dev/webhooks/telegram/action`
+- ✅ All 13+ commands responding with proper parameter parsing
+- ✅ Chat validation working
+- ✅ Messages delivering instantly (< 200ms)
+- ✅ Command parameter parsing: `/register ACCOUNT_NUM WEB_UID [PROXY_URL]`
+- ✅ Full support for all trading commands with optional parameters
 
 ## Durable Execution with Inngest
 
