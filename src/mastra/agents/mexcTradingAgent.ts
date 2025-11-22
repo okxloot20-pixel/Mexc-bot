@@ -52,6 +52,24 @@ async function executeToolDirect(tool: any, context: any): Promise<string> {
   }
 }
 
+// Helper: Get best bid price from MEXC orderbook
+async function getBestBidPrice(symbol: string): Promise<number | null> {
+  try {
+    const response = await fetch(`https://contract.mexc.com/api/v1/depth?symbol=${symbol}&limit=20`);
+    const data = await response.json();
+    
+    if (data.success && data.data && Array.isArray(data.data.bids) && data.data.bids.length > 0) {
+      // bids[0][0] is the best bid price
+      return parseFloat(data.data.bids[0][0]);
+    }
+    
+    return null;
+  } catch (error: any) {
+    console.error(`Error getting best bid price for ${symbol}:`, error.message);
+    return null;
+  }
+}
+
 // Simple command parser - no LLM needed for basic testing
 export async function parseAndExecuteCommand(message: string, userId: string, mastra?: any): Promise<string> {
   if (mastra) {
@@ -213,6 +231,31 @@ U_ID: ${uId.substring(0, 30)}...
       leverage,
     });
     return `✅ *Лимит SHORT ордер создаётся*\n\n${result}`;
+  }
+  
+  // Open SHORT limit at best bid price from orderbook
+  if (cmd.startsWith("/sb")) {
+    const parts = message.trim().split(/\s+/);
+    const symbol = parts[1] ? parts[1].toUpperCase() : "BTC";
+    const size = parts[2] ? parseInt(parts[2]) : undefined;
+    const leverage = parts[3] ? parseInt(parts[3]) : undefined;
+    
+    // Get best bid price from orderbook
+    const fullSymbol = `${symbol}_USDT`;
+    const bestBidPrice = await getBestBidPrice(fullSymbol);
+    
+    if (bestBidPrice === null) {
+      return `❌ Не удалось получить цену из стакана для ${fullSymbol}`;
+    }
+    
+    const result = await executeToolDirect(openShortLimitTool, {
+      telegramUserId: userId,
+      symbol,
+      price: bestBidPrice,
+      size,
+      leverage,
+    });
+    return `✅ *SHORT лимит по best bid ${bestBidPrice}*\n\n${result}`;
   }
   
   // Close position
