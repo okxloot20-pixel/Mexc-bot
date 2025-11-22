@@ -24,23 +24,23 @@ function createMexcClient(uId: string): MexcFuturesClient {
 // MEXC will validate the actual limit based on symbol specs
 async function calculateMaxPositionSize(client: MexcFuturesClient, leverage: number, logger?: any): Promise<number> {
   try {
-    // Get account asset info - this returns actual USD values, not contract count
-    const asset = await client.getAccountAsset("USDT");
+    // Get account asset info - SDK returns: { success, code, data: { availableBalance, ... } }
+    const response = await client.getAccountAsset("USDT");
     
-    // Log the entire asset object to debug
-    logger?.info(`📊 Full asset object:`, JSON.stringify(asset, null, 2));
+    // SDK wraps response in data object
+    const assetData = (response as any).data || response;
     
     // Try multiple property names since SDK might use different naming
-    const availableBalance = (asset as any).availableBalance 
-      || (asset as any).available 
-      || (asset as any).balance 
-      || (asset as any).walletBalance
+    const availableBalance = assetData?.availableBalance 
+      || assetData?.available 
+      || (response as any).availableBalance
+      || (response as any).balance 
       || 0;
     
     logger?.info(`💰 Available balance: ${availableBalance} USDT`);
     
-    if (availableBalance === 0) {
-      logger?.warn(`⚠️ Balance is 0, using fallback of 100 USDT`);
+    if (availableBalance <= 0) {
+      logger?.warn(`⚠️ Balance is 0 or invalid, using fallback`);
       // Use a fallback multiplier for testing
       return Math.floor(100 * 0.9 * leverage);
     }
