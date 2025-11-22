@@ -227,16 +227,30 @@ export async function parseAndExecuteCommand(message: string, userId: string, ma
   
   // Help/Start
   if (cmd === "/start" || cmd === "/help") {
-    return `🤖 *Mexc Futures Trading Bot*
-    
-*Доступные команды:*
-/register - Регистрация аккаунта
-/accounts - Список аккаунтов
-/lm BTC - Открыть LONG позицию
-/sm BTC - Открыть SHORT позицию
-/positions - Открытые позиции
-/balance - Баланс
-/cancel - Отменить ордер`;
+    return JSON.stringify({
+      type: "menu",
+      text: `🤖 *Mexc Futures Trading Bot*
+
+Выбери раздел ниже для управления торговлей`,
+      keyboard: [
+        [
+          { text: "📈 Трейдинг", callback_data: "trading" },
+          { text: "💼 Позиции", callback_data: "positions" }
+        ],
+        [
+          { text: "👤 Аккаунт", callback_data: "account" },
+          { text: "📊 Ордеры", callback_data: "orders" }
+        ],
+        [
+          { text: "🎯 Подписка", callback_data: "subscription" }
+        ],
+        [
+          { text: "🚨 Сигналы", callback_data: "signals" },
+          { text: "⚙️ Настройки", callback_data: "settings" },
+          { text: "❓ Help", callback_data: "help" }
+        ]
+      ]
+    });
   }
   
   // Register account (with or without parameters)

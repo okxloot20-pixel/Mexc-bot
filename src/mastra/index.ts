@@ -256,15 +256,31 @@ export const mastra = new Mastra({
                 const apiUrl = `https://api.telegram.org/bot${botToken}/sendMessage`;
                 console.log(`🚀 Sending to Telegram API for chat ${chatId}...`);
                 
-                const payload = {
+                // Check if response is a menu JSON object
+                let payload: any = {
                   chat_id: chatId,
                   text: response,
+                  parse_mode: "Markdown",
                 };
+                
+                try {
+                  const parsedResponse = JSON.parse(response);
+                  if (parsedResponse.type === "menu" && parsedResponse.keyboard) {
+                    payload.text = parsedResponse.text;
+                    payload.reply_markup = {
+                      inline_keyboard: parsedResponse.keyboard
+                    };
+                  }
+                } catch (e) {
+                  // Not JSON, treat as plain text response
+                  payload.parse_mode = "Markdown";
+                }
 
                 logger?.info("📤 [Telegram] Sending request to Telegram API", {
                   url: apiUrl.substring(0, 50) + "...",
                   chatId,
                   responseLength: response.length,
+                  hasKeyboard: payload.reply_markup ? true : false,
                 });
 
                 const apiResponse = await fetch(apiUrl, {
