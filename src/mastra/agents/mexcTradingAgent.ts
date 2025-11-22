@@ -100,7 +100,7 @@ async function openPositionOnAccounts(
         }
       } catch (error: any) {
         const errorMsg = error.message.includes("401") 
-          ? "⚠️ WEB_UID неверный или истёк - обновите его через /register"
+          ? "❌ u_id неверный - скопируй свежий из DevTools"
           : error.message.substring(0, 60);
         results.push(`⚠️ Аккаунт ${account.accountNumber}: ${errorMsg}`);
       }
