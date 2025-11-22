@@ -20,6 +20,22 @@ function createMexcClient(uId: string): MexcFuturesClient {
   });
 }
 
+// Helper: Calculate max position size based on balance and leverage
+async function getMaxPositionSize(client: MexcFuturesClient, leverage: number, logger?: any): Promise<number> {
+  try {
+    const asset = await client.getAccountAsset("USDT");
+    const balance = (asset as any).availableBalance || (asset as any).balance || 0;
+    
+    // Max size = balance * leverage (all available margin)
+    const maxSize = Math.floor(balance * leverage);
+    logger?.info(`💰 Max position size calculated: ${maxSize} contracts (balance: ${balance} USDT, leverage: ${leverage}x)`);
+    return Math.max(maxSize, 1); // At least 1 contract
+  } catch (error: any) {
+    logger?.error('❌ Error calculating max size', { error: error.message });
+    return 10; // Fallback to 10 if error
+  }
+}
+
 /**
  * Tool: Open Long Market Position
  */
@@ -62,9 +78,16 @@ export const openLongMarketTool = createTool({
         try {
           logger?.info(`🔌 Opening position on account ${account.accountNumber}`, { symbol });
           const client = createMexcClient(account.uId);
-          const tradeSize = context.size || account.defaultSize || 10;
           const tradeLeverage = context.leverage || account.defaultLeverage || 20;
+          
+          // Get max size based on balance
+          let tradeSize = context.size;
+          if (!tradeSize) {
+            tradeSize = await getMaxPositionSize(client, tradeLeverage, logger);
+          }
 
+          logger?.info(`📍 Submitting order`, { symbol, size: tradeSize, leverage: tradeLeverage });
+          
           await client.submitOrder({
             symbol,
             side: 1,
@@ -137,8 +160,15 @@ export const openShortMarketTool = createTool({
       for (const account of accounts) {
         try {
           const client = createMexcClient(account.uId);
-          const tradeSize = context.size || account.defaultSize || 10;
           const tradeLeverage = context.leverage || account.defaultLeverage || 20;
+          
+          // Get max size based on balance
+          let tradeSize = context.size;
+          if (!tradeSize) {
+            tradeSize = await getMaxPositionSize(client, tradeLeverage, logger);
+          }
+
+          logger?.info(`📍 Submitting order`, { symbol, size: tradeSize, leverage: tradeLeverage });
 
           await client.submitOrder({
             symbol,
