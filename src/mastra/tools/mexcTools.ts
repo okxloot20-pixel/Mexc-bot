@@ -25,7 +25,7 @@ function createMexcSignature(params: Record<string, any>, secretKey: string): st
     .digest('hex');
 }
 
-// Helper function to make authenticated MEXC API calls
+// Helper function to make authenticated MEXC API calls with WEB_UID
 export async function mexcApiCall(
   endpoint: string,
   method: string,
@@ -41,10 +41,23 @@ export async function mexcApiCall(
     timestamp,
   };
 
+  // MEXC authentication headers - try multiple approaches
   const headers: Record<string, string> = {
     "Content-Type": "application/json",
-    "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36",
-    "Cookie": `WEB_UID=${webUid}`,
+    "Accept": "application/json",
+    "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36",
+    "Referer": "https://contract.mexc.com/",
+    "Origin": "https://contract.mexc.com",
+    "Accept-Language": "en-US,en;q=0.9",
+    "Accept-Encoding": "gzip, deflate, br",
+    "Cache-Control": "no-cache",
+    "Pragma": "no-cache",
+    "Sec-Fetch-Dest": "empty",
+    "Sec-Fetch-Mode": "cors",
+    "Sec-Fetch-Site": "same-origin",
+    // WEB_UID can be in header OR cookie - try both
+    "X-WEB-UID": webUid,
+    "Cookie": `WEB_UID=${webUid}; path=/`,
   };
 
   const fetchOptions: RequestInit = {
@@ -60,14 +73,31 @@ export async function mexcApiCall(
     ? `${baseUrl}${endpoint}?${new URLSearchParams(requestParams as any).toString()}`
     : `${baseUrl}${endpoint}`;
 
-  // If proxy is provided, we would use it here (simplified for now)
-  const response = await fetch(url, fetchOptions);
-  
-  if (!response.ok) {
-    throw new Error(`MEXC API error: ${response.status} ${response.statusText}`);
-  }
+  try {
+    const response = await fetch(url, fetchOptions);
+    const responseText = await response.text();
+    
+    if (!response.ok) {
+      // Parse error response if possible
+      let errorMessage = `MEXC API error: ${response.status} ${response.statusText}`;
+      try {
+        const errorData = JSON.parse(responseText);
+        errorMessage = `MEXC API error: ${response.status} - ${errorData.msg || errorData.message || errorData.description || response.statusText}`;
+      } catch (e) {
+        errorMessage = `MEXC API error: ${response.status} - ${responseText.substring(0, 100)}`;
+      }
+      throw new Error(errorMessage);
+    }
 
-  return await response.json();
+    // Parse response
+    try {
+      return JSON.parse(responseText);
+    } catch (e) {
+      throw new Error(`Invalid JSON response from MEXC API: ${responseText.substring(0, 100)}`);
+    }
+  } catch (error: any) {
+    throw new Error(`MEXC API call failed: ${error.message}`);
+  }
 }
 
 /**

@@ -99,7 +99,10 @@ async function openPositionOnAccounts(
           results.push(`✅ Аккаунт ${account.accountNumber}: Позиция открыта`);
         }
       } catch (error: any) {
-        results.push(`⚠️ Аккаунт ${account.accountNumber}: ${error.message.substring(0, 50)}`);
+        const errorMsg = error.message.includes("401") 
+          ? "⚠️ WEB_UID неверный или истёк - обновите его через /register"
+          : error.message.substring(0, 60);
+        results.push(`⚠️ Аккаунт ${account.accountNumber}: ${errorMsg}`);
       }
     }
 
