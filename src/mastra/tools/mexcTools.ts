@@ -529,8 +529,12 @@ export const getPositionsTool = createTool({
 
           results.push(`👤 *Аккаунт ${account.accountNumber}:*`);
           for (const pos of positions) {
-            const sideText = (pos as any).side === 1 ? "LONG" : "SHORT";
-            results.push(`🔹 ${(pos as any).symbol}: ${sideText} ${(pos as any).holdVol} | PnL: ${(pos as any).pnl > 0 ? "🟢" : "🔴"} ${(pos as any).pnl}`);
+            const sideText = (pos as any).side === 1 ? "🟢 LONG" : "🔴 SHORT";
+            const pnlUsd = (pos as any).pnl || 0;
+            const pnlPercent = (pos as any).pnlRate || 0;
+            const pnlEmoji = pnlUsd > 0 ? "📈" : "📉";
+            const holdVol = (pos as any).holdVol || 0;
+            results.push(`${pnlEmoji} ${(pos as any).symbol} | ${sideText} ${holdVol}кт | ${pnlUsd > 0 ? "+" : ""}${pnlUsd.toFixed(2)}$ | ${pnlPercent > 0 ? "+" : ""}${pnlPercent.toFixed(2)}%`);
           }
         } catch (error: any) {
           results.push(`❌ Аккаунт ${account.accountNumber}: ${error.message}`);
