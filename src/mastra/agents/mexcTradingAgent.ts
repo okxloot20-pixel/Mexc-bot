@@ -541,13 +541,16 @@ U_ID: ${uId.substring(0, 30)}...
       
       const buttons = accounts.map((acc) => {
         const status = acc.isActive ? "✅" : "❌";
-        return `${status} ${acc.accountNumber}`;
+        return {
+          text: `${status} ${acc.accountNumber}`,
+          callback_data: `toggle_account_${acc.accountNumber}`
+        };
       });
       
       return JSON.stringify({
-        type: "keyboard_menu",
+        type: "menu",
         text: "📝 *Твои аккаунты MEXC*\n\nНажимай на кнопку, чтобы включить / выключать аккаунт.\nВсе торговые команды выполняются на активных аккаунтах.",
-        keyboard: [buttons, ["← Назад"]]
+        keyboard: [buttons, [{ text: "← Назад", callback_data: "back_to_main" }]]
       });
     } catch (error: any) {
       return `❌ Ошибка при получении аккаунтов: ${error.message}`;
@@ -587,13 +590,16 @@ U_ID: ${uId.substring(0, 30)}...
       
       const buttons = accounts.map((acc) => {
         const status = acc.isActive ? "✅" : "❌";
-        return `${status} ${acc.accountNumber}`;
+        return {
+          text: `${status} ${acc.accountNumber}`,
+          callback_data: `toggle_account_${acc.accountNumber}`
+        };
       });
       
       return JSON.stringify({
-        type: "keyboard_menu",
+        type: "menu",
         text: resultMsg + "\n\n📝 *Твои аккаунты MEXC*\n\nНажимай на кнопку, чтобы включить / выключать аккаунт.\nВсе торговые команды выполняются на активных аккаунтах.",
-        keyboard: [buttons, ["← Назад"]]
+        keyboard: [buttons, [{ text: "← Назад", callback_data: "back_to_main" }]]
       });
     } catch (error: any) {
       return `❌ Ошибка: ${error.message}`;

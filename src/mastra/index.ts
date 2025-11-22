@@ -312,6 +312,11 @@ export const mastra = new Mastra({
                       ]
                     ]
                   });
+                } else if (callbackData.startsWith("toggle_account_")) {
+                  // Handle account toggle via callback
+                  const accountNumber = parseInt(callbackData.split("_")[2]);
+                  const simulatedMessage = `✅ ${accountNumber}`;
+                  response = await parseAndExecuteCommand(simulatedMessage, userId, mastra);
                 } else {
                   response = "📨 Неизвестная команда";
                 }
