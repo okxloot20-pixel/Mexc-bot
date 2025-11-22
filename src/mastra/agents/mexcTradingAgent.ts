@@ -539,16 +539,66 @@ U_ID: ${uId.substring(0, 30)}...
 Используйте /register для добавления`;
       }
       
-      let response = `📊 *Ваши аккаунты*\n\n`;
-      accounts.forEach((acc, idx) => {
-        response += `${idx + 1}️⃣ Аккаунт #${acc.accountNumber}\n`;
-        response += `   U_ID: ${acc.uId.substring(0, 20)}...\n`;
-        if (acc.proxy) response += `   Прокси: ${acc.proxy}\n`;
-        response += `   Рычаг: ${acc.defaultLeverage}x | Размер: ${acc.defaultSize}\n\n`;
+      const keyboard = accounts.map((acc) => {
+        const status = acc.isActive ? "✅" : "❌";
+        return [`${status} ${acc.accountNumber}`];
       });
-      return response;
+      keyboard.push(["← Назад"]);
+      
+      return JSON.stringify({
+        type: "keyboard_menu",
+        text: "📝 *Управление аккаунтами*\n\nНажимайте на кнопку, чтобы включить / выключить аккаунт.\nВсе торговые команды выполняются на активных аккаунтах.",
+        keyboard
+      });
     } catch (error: any) {
       return `❌ Ошибка при получении аккаунтов: ${error.message}`;
+    }
+  }
+  
+  // Handle account toggle (format: "✅ 458" or "❌ 458")
+  const accountToggleMatch = message.match(/^(✅|❌)\s+(\d+)$/);
+  if (accountToggleMatch) {
+    try {
+      const accountNumber = parseInt(accountToggleMatch[2]);
+      const currentStatus = accountToggleMatch[1] === "✅";
+      
+      const account = await db.query.mexcAccounts.findFirst({
+        where: and(
+          eq(mexcAccounts.telegramUserId, userId),
+          eq(mexcAccounts.accountNumber, accountNumber)
+        ),
+      });
+      
+      if (!account) {
+        return `❌ Аккаунт #${accountNumber} не найден`;
+      }
+      
+      // Toggle the account status
+      await db.update(mexcAccounts)
+        .set({ isActive: !currentStatus })
+        .where(eq(mexcAccounts.id, account.id));
+      
+      const newStatus = !currentStatus ? "✅ включён" : "❌ выключен";
+      const resultMsg = `📝 *Аккаунт #${accountNumber} ${newStatus}*`;
+      
+      // Show updated menu
+      const accounts = await db.query.mexcAccounts.findMany({
+        where: eq(mexcAccounts.telegramUserId, userId),
+      });
+      
+      const keyboard = accounts.map((acc) => {
+        const status = acc.isActive ? "✅" : "❌";
+        return [`${status} ${acc.accountNumber}`];
+      });
+      keyboard.push(["← Назад"]);
+      
+      return JSON.stringify({
+        type: "keyboard_menu",
+        text: resultMsg + "\n\n📝 *Управление аккаунтами*\n\nНажимайте на кнопку, чтобы включить / выключить аккаунт.\nВсе торговые команды выполняются на активных аккаунтах.",
+        keyboard
+      });
+    } catch (error: any) {
+      return `❌ Ошибка: ${error.message}`;
     }
   }
   
