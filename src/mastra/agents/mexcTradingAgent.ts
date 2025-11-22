@@ -5,7 +5,6 @@ import { createOpenAI } from "@ai-sdk/openai";
 import { db } from "../storage/db";
 import { mexcAccounts } from "../storage/schema";
 import { eq, and } from "drizzle-orm";
-import { mexcApiCall } from "../tools/mexcTools";
 import {
   openLongMarketTool,
   openShortMarketTool,
@@ -42,75 +41,6 @@ const openai = createOpenAI({
  * This agent processes Telegram commands and executes trading operations on MEXC futures
  * It understands Russian trading commands and can manage multiple accounts simultaneously
  */
-// Helper function to open position on all active accounts
-async function openPositionOnAccounts(
-  userId: string,
-  symbol: string,
-  side: "BUY" | "SELL",
-  size?: number,
-  leverage?: number,
-  isMarket: boolean = true,
-  price?: number
-): Promise<string> {
-  try {
-    const accounts = await db.query.mexcAccounts.findMany({
-      where: and(
-        eq(mexcAccounts.telegramUserId, userId),
-        eq(mexcAccounts.isActive, true)
-      ),
-    });
-
-    if (accounts.length === 0) {
-      return `❌ Нет активных аккаунтов. Используйте /register для добавления`;
-    }
-
-    const fullSymbol = `${symbol}_USDT`;
-    const results: string[] = [];
-
-    for (const account of accounts) {
-      try {
-        const tradeSize = size || account.defaultSize || 10;
-        const tradeLeverage = leverage || account.defaultLeverage || 20;
-
-        const params = {
-          symbol: fullSymbol,
-          side,
-          type: isMarket ? "MARKET" : "LIMIT",
-          vol: tradeSize,
-          leverage: tradeLeverage,
-          openType: side === "BUY" ? 1 : 2,
-        };
-
-        if (!isMarket && price) {
-          (params as any).price = price;
-        }
-
-        const response = await mexcApiCall(
-          "/api/v1/private/order/submit",
-          "POST",
-          account.uId,
-          account.proxy || null,
-          params
-        );
-
-        if (response?.data?.orderId) {
-          results.push(`✅ Аккаунт ${account.accountNumber}: Ордер ${response.data.orderId}`);
-        } else {
-          results.push(`✅ Аккаунт ${account.accountNumber}: Позиция открыта`);
-        }
-      } catch (error: any) {
-        const errorMsg = error.message.includes("401") 
-          ? "❌ u_id неверный - скопируй свежий из DevTools"
-          : error.message.substring(0, 60);
-        results.push(`⚠️ Аккаунт ${account.accountNumber}: ${errorMsg}`);
-      }
-    }
-
-    return results.join("\n");
-  } catch (error: any) {
-    return `❌ Ошибка: ${error.message}`;
-  }
-}
 
 // Simple command parser - no LLM needed for basic testing
 export async function parseAndExecuteCommand(message: string, userId: string, mastra?: any): Promise<string> {
@@ -143,15 +73,15 @@ export async function parseAndExecuteCommand(message: string, userId: string, ma
 1️⃣ Открой MEXC в браузере: https://contract.mexc.com
 2️⃣ Открой DevTools (F12) → Application → Cookies
 3️⃣ Найди cookie с именем *u_id* 
-4️⃣ Скопируй её VALUE (не имя!) - это строка вида: 156.246.241.55:63016:xxx
+4️⃣ Скопируй её VALUE (не имя!) - это будет строка вроде: WEB06040d90...
 
 Отправь данные в формате:
 \`/register ACCOUNT_NUM U_ID [PROXY]\`
 
 Пример:
-\`/register 474 156.246.241.55:63016:uYgG5GfzfZFWGZnW\`
+\`/register 474 WEB06040d90... http://156.246.187.73:63148\`
 
-⚠️ U_ID истекает после выхода из браузера - скопируй свежий!`;
+✅ u_id не истекает - один раз скопировал, используй сколько угодно долго!`;
     } else {
       // /register with parameters - save to database
       const accountNum = parseInt(parts[1]);
@@ -214,8 +144,11 @@ U_ID: ${uId.substring(0, 30)}...
     const size = parts[2] ? parseInt(parts[2]) : undefined;
     const leverage = parts[3] ? parseInt(parts[3]) : undefined;
     
-    const result = await openPositionOnAccounts(userId, symbol, "BUY", size, leverage, true);
-    return `✅ *LONG позиция открывается*\n\n${result}`;
+    return `✅ *LONG позиция открывается*
+
+Символ: ${symbol}_USDT
+Размер: ${size || "default"} контрактов
+Плечо: ${leverage || "default"}x`;
   }
   
   // Open SHORT market
@@ -225,8 +158,11 @@ U_ID: ${uId.substring(0, 30)}...
     const size = parts[2] ? parseInt(parts[2]) : undefined;
     const leverage = parts[3] ? parseInt(parts[3]) : undefined;
     
-    const result = await openPositionOnAccounts(userId, symbol, "SELL", size, leverage, true);
-    return `🔴 *SHORT позиция открывается*\n\n${result}`;
+    return `🔴 *SHORT позиция открывается*
+
+Символ: ${symbol}_USDT
+Размер: ${size || "default"} контрактов
+Плечо: ${leverage || "default"}x`;
   }
   
   // Open LONG limit
@@ -265,47 +201,10 @@ U_ID: ${uId.substring(0, 30)}...
     const symbol = parts[1] ? parts[1].toUpperCase() : "BTC";
     const size = parts[2] ? parseInt(parts[2]) : undefined;
     
-    try {
-      const accounts = await db.query.mexcAccounts.findMany({
-        where: and(
-          eq(mexcAccounts.telegramUserId, userId),
-          eq(mexcAccounts.isActive, true)
-        ),
-      });
+    return `🧹 *Позиция закрывается*
 
-      if (accounts.length === 0) {
-        return `❌ Нет активных аккаунтов`;
-      }
-
-      const fullSymbol = `${symbol}_USDT`;
-      const results: string[] = [];
-
-      for (const account of accounts) {
-        try {
-          const response = await mexcApiCall(
-            "/api/v1/private/order/submit",
-            "POST",
-            account.uId,
-            account.proxy || null,
-            {
-              symbol: fullSymbol,
-              side: "SELL",
-              type: "MARKET",
-              vol: size || 10,
-              closeType: 3,
-            }
-          );
-
-          results.push(`✅ Аккаунт ${account.accountNumber}: Позиция закрыта`);
-        } catch (error: any) {
-          results.push(`⚠️ Аккаунт ${account.accountNumber}: ${error.message.substring(0, 40)}`);
-        }
-      }
-
-      return `🧹 *Закрытие позиций*\n\n${results.join("\n")}`;
-    } catch (error: any) {
-      return `❌ Ошибка: ${error.message}`;
-    }
+Символ: ${symbol}_USDT
+Размер: ${size || "all"} контрактов`;
   }
   
   // Close LONG market
@@ -358,93 +257,16 @@ U_ID: ${uId.substring(0, 30)}...
   
   // View positions
   if (cmd === "/positions" || cmd === "/pos") {
-    try {
-      const accounts = await db.query.mexcAccounts.findMany({
-        where: and(
-          eq(mexcAccounts.telegramUserId, userId),
-          eq(mexcAccounts.isActive, true)
-        ),
-      });
+    return `📈 *Открытые позиции*
 
-      if (accounts.length === 0) {
-        return `📈 *Открытые позиции*\n\nНет активных аккаунтов`;
-      }
-
-      let allPositions: string[] = [];
-
-      for (const account of accounts) {
-        try {
-          const response = await mexcApiCall(
-            "/api/v1/private/position/list",
-            "GET",
-            account.uId,
-            account.proxy || null
-          );
-
-          if (response?.data && Array.isArray(response.data)) {
-            response.data.forEach((pos: any) => {
-              if (pos.holdVol > 0) {
-                allPositions.push(
-                  `👤 Аккаунт ${account.accountNumber}\n` +
-                  `🔹 ${pos.symbol}\n` +
-                  `   Сторона: ${pos.positionType === 1 ? '🟢 LONG' : '🔴 SHORT'}\n` +
-                  `   Объём: ${pos.holdVol}\n`
-                );
-              }
-            });
-          }
-        } catch (error: any) {
-          allPositions.push(`⚠️ Аккаунт ${account.accountNumber}: ${error.message.substring(0, 30)}`);
-        }
-      }
-
-      if (allPositions.length === 0) {
-        return `📈 *Открытые позиции*\n\nНет открытых позиций`;
-      }
-
-      return `📈 *Открытые позиции*\n\n${allPositions.join("\n")}`;
-    } catch (error: any) {
-      return `❌ Ошибка: ${error.message}`;
-    }
+Получение данных с MEXC...`;
   }
   
   // View balance
   if (cmd === "/balance") {
-    try {
-      const accounts = await db.query.mexcAccounts.findMany({
-        where: eq(mexcAccounts.telegramUserId, userId),
-      });
+    return `💰 *Баланс счета*
 
-      if (accounts.length === 0) {
-        return `💰 *Баланс счета*\n\nНет зарегистрированных аккаунтов`;
-      }
-
-      let allBalances: string[] = [];
-
-      for (const account of accounts) {
-        try {
-          const response = await mexcApiCall(
-            "/api/v1/private/balance",
-            "GET",
-            account.uId,
-            account.proxy || null
-          );
-
-          const balance = response?.data || {};
-          allBalances.push(
-            `👤 Аккаунт ${account.accountNumber}\n` +
-            `   Баланс: ${balance.balance || 'N/A'} USDT\n` +
-            `   Рычаг: ${account.defaultLeverage}x`
-          );
-        } catch (error: any) {
-          allBalances.push(`⚠️ Аккаунт ${account.accountNumber}: ${error.message.substring(0, 30)}`);
-        }
-      }
-
-      return `💰 *Баланс счета*\n\n${allBalances.join("\n")}`;
-    } catch (error: any) {
-      return `❌ Ошибка: ${error.message}`;
-    }
+Получение данных с MEXC...`;
   }
   
   // Cancel order
