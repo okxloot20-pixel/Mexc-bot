@@ -20,6 +20,7 @@ const processTradingCommand = createStep({
   inputSchema: z.object({
     threadId: z.string().describe("Unique thread ID for conversation memory"),
     userName: z.string().describe("Telegram username of the sender"),
+    telegramUserId: z.string().describe("Telegram user ID of the sender"),
     message: z.string().describe("Trading command message from Telegram"),
     chatId: z.number().optional().describe("Telegram chat ID for sending response"),
   }),
@@ -39,6 +40,10 @@ const processTradingCommand = createStep({
     try {
       const agentResponse = await mexcTradingAgent.generateLegacy(
         [
+          {
+            role: "system",
+            content: `telegram_user_id: ${inputData.telegramUserId}, telegram_username: ${inputData.userName}`,
+          },
           {
             role: "user",
             content: inputData.message,
@@ -159,6 +164,7 @@ export const telegramTradingWorkflow = createWorkflow({
   inputSchema: z.object({
     threadId: z.string().describe("Unique thread ID for conversation"),
     userName: z.string().describe("Telegram username"),
+    telegramUserId: z.string().describe("Telegram user ID"),
     message: z.string().describe("Trading command message"),
     chatId: z.number().optional().describe("Telegram chat ID"),
   }) as any,

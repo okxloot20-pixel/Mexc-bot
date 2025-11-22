@@ -1,6 +1,9 @@
 import { createTool } from "@mastra/core/tools";
 import { z } from "zod";
 import crypto from "crypto";
+import { db } from "../storage/db";
+import { mexcAccounts } from "../storage/schema";
+import { eq, and } from "drizzle-orm";
 
 /**
  * MEXC Futures Trading Tools
@@ -69,20 +72,25 @@ async function mexcApiCall(
 
 /**
  * Tool: Open Long Market Position
- * Opens a long position at market price
+ * Opens a long position at market price on all active accounts
  */
 export const openLongMarketTool = createTool({
   id: "open-long-market",
-  description: "Opens a LONG market position on MEXC futures for specified symbol and size",
+  description: "Opens a LONG market position on MEXC futures for all active accounts",
   inputSchema: z.object({
-    accountId: z.string().describe("Account ID from user's accounts"),
+    telegramUserId: z.string().describe("Telegram user ID"),
     symbol: z.string().describe("Trading pair symbol (e.g., BTC, ETH - without _USDT)"),
-    size: z.number().describe("Position size in contracts"),
-    leverage: z.number().optional().describe("Leverage multiplier (optional, uses default if not provided)"),
+    size: z.number().optional().describe("Position size in contracts (optional, uses account default)"),
+    leverage: z.number().optional().describe("Leverage multiplier (optional, uses account default)"),
   }),
   outputSchema: z.object({
     success: z.boolean(),
-    orderId: z.string().optional(),
+    results: z.array(z.object({
+      accountNumber: z.number(),
+      success: z.boolean(),
+      orderId: z.string().optional(),
+      message: z.string(),
+    })),
     message: z.string(),
   }),
   execute: async ({ context, mastra }) => {
@@ -90,40 +98,78 @@ export const openLongMarketTool = createTool({
     logger?.info('🟢 [openLongMarketTool] Opening LONG market position', context);
 
     try {
-      const symbol = `${context.symbol}_USDT`;
-      
-      // Mock implementation - replace with actual MEXC API call
-      // In real implementation, retrieve webUid and proxy from database using accountId
-      const webUid = process.env.MEXC_WEB_UID || "";
-      const proxy = process.env.MEXC_PROXY || null;
-      
-      const result = await mexcApiCall(
-        "/api/v1/private/order/submit",
-        "POST",
-        webUid,
-        proxy,
-        {
-          symbol,
-          side: "BUY",
-          type: "MARKET",
-          vol: context.size,
-          leverage: context.leverage || 20,
-          openType: 1, // Open long
-        }
-      );
+      // Get all active accounts for this user
+      const accounts = await db.query.mexcAccounts.findMany({
+        where: and(
+          eq(mexcAccounts.telegramUserId, context.telegramUserId),
+          eq(mexcAccounts.isActive, true)
+        ),
+      });
 
-      logger?.info('✅ [openLongMarketTool] Position opened successfully', result);
+      if (accounts.length === 0) {
+        return {
+          success: false,
+          results: [],
+          message: "❌ Нет активных аккаунтов. Используйте /register для добавления аккаунта.",
+        };
+      }
+
+      const symbol = `${context.symbol}_USDT`;
+      const results = [];
+
+      // Execute trade on all active accounts
+      for (const account of accounts) {
+        try {
+          const tradeSize = context.size || account.defaultSize || 10;
+          const tradeLeverage = context.leverage || account.defaultLeverage || 20;
+
+          const result = await mexcApiCall(
+            "/api/v1/private/order/submit",
+            "POST",
+            account.webUid,
+            account.proxy || null,
+            {
+              symbol,
+              side: "BUY",
+              type: "MARKET",
+              vol: tradeSize,
+              leverage: tradeLeverage,
+              openType: 1, // Open long
+            }
+          );
+
+          results.push({
+            accountNumber: account.accountNumber,
+            success: true,
+            orderId: result.data?.orderId || `order-${Date.now()}`,
+            message: `✅ Аккаунт ${account.accountNumber}: LONG ${tradeSize} контрактов`,
+          });
+        } catch (error: any) {
+          logger?.error(`❌ [openLongMarketTool] Error for account ${account.accountNumber}`, {
+            error: error.message,
+          });
+          results.push({
+            accountNumber: account.accountNumber,
+            success: false,
+            message: `❌ Аккаунт ${account.accountNumber}: ${error.message}`,
+          });
+        }
+      }
+
+      const successCount = results.filter(r => r.success).length;
+      logger?.info('✅ [openLongMarketTool] Completed', { successCount, totalAccounts: accounts.length });
 
       return {
-        success: true,
-        orderId: result.data?.orderId || "mock-order-id",
-        message: `LONG market order placed for ${context.size} contracts of ${symbol}`,
+        success: successCount > 0,
+        results,
+        message: `Открыто LONG позиций: ${successCount}/${accounts.length} аккаунтов`,
       };
     } catch (error: any) {
-      logger?.error('❌ [openLongMarketTool] Error opening position', { error: error.message });
+      logger?.error('❌ [openLongMarketTool] Error', { error: error.message });
       return {
         success: false,
-        message: `Failed to open position: ${error.message}`,
+        results: [],
+        message: `Ошибка: ${error.message}`,
       };
     }
   },
@@ -131,20 +177,25 @@ export const openLongMarketTool = createTool({
 
 /**
  * Tool: Open Short Market Position
- * Opens a short position at market price
+ * Opens a short position at market price on all active accounts
  */
 export const openShortMarketTool = createTool({
   id: "open-short-market",
-  description: "Opens a SHORT market position on MEXC futures for specified symbol and size",
+  description: "Opens a SHORT market position on MEXC futures for all active accounts",
   inputSchema: z.object({
-    accountId: z.string().describe("Account ID from user's accounts"),
+    telegramUserId: z.string().describe("Telegram user ID"),
     symbol: z.string().describe("Trading pair symbol (e.g., BTC, ETH - without _USDT)"),
-    size: z.number().describe("Position size in contracts"),
-    leverage: z.number().optional().describe("Leverage multiplier (optional, uses default if not provided)"),
+    size: z.number().optional().describe("Position size in contracts (optional, uses account default)"),
+    leverage: z.number().optional().describe("Leverage multiplier (optional, uses account default)"),
   }),
   outputSchema: z.object({
     success: z.boolean(),
-    orderId: z.string().optional(),
+    results: z.array(z.object({
+      accountNumber: z.number(),
+      success: z.boolean(),
+      orderId: z.string().optional(),
+      message: z.string(),
+    })),
     message: z.string(),
   }),
   execute: async ({ context, mastra }) => {
@@ -152,37 +203,78 @@ export const openShortMarketTool = createTool({
     logger?.info('🔴 [openShortMarketTool] Opening SHORT market position', context);
 
     try {
-      const symbol = `${context.symbol}_USDT`;
-      const webUid = process.env.MEXC_WEB_UID || "";
-      const proxy = process.env.MEXC_PROXY || null;
-      
-      const result = await mexcApiCall(
-        "/api/v1/private/order/submit",
-        "POST",
-        webUid,
-        proxy,
-        {
-          symbol,
-          side: "SELL",
-          type: "MARKET",
-          vol: context.size,
-          leverage: context.leverage || 20,
-          openType: 2, // Open short
-        }
-      );
+      // Get all active accounts for this user
+      const accounts = await db.query.mexcAccounts.findMany({
+        where: and(
+          eq(mexcAccounts.telegramUserId, context.telegramUserId),
+          eq(mexcAccounts.isActive, true)
+        ),
+      });
 
-      logger?.info('✅ [openShortMarketTool] Position opened successfully', result);
+      if (accounts.length === 0) {
+        return {
+          success: false,
+          results: [],
+          message: "❌ Нет активных аккаунтов. Используйте /register для добавления аккаунта.",
+        };
+      }
+
+      const symbol = `${context.symbol}_USDT`;
+      const results = [];
+
+      // Execute trade on all active accounts
+      for (const account of accounts) {
+        try {
+          const tradeSize = context.size || account.defaultSize || 10;
+          const tradeLeverage = context.leverage || account.defaultLeverage || 20;
+
+          const result = await mexcApiCall(
+            "/api/v1/private/order/submit",
+            "POST",
+            account.webUid,
+            account.proxy || null,
+            {
+              symbol,
+              side: "SELL",
+              type: "MARKET",
+              vol: tradeSize,
+              leverage: tradeLeverage,
+              openType: 2, // Open short
+            }
+          );
+
+          results.push({
+            accountNumber: account.accountNumber,
+            success: true,
+            orderId: result.data?.orderId || `order-${Date.now()}`,
+            message: `✅ Аккаунт ${account.accountNumber}: SHORT ${tradeSize} контрактов`,
+          });
+        } catch (error: any) {
+          logger?.error(`❌ [openShortMarketTool] Error for account ${account.accountNumber}`, {
+            error: error.message,
+          });
+          results.push({
+            accountNumber: account.accountNumber,
+            success: false,
+            message: `❌ Аккаунт ${account.accountNumber}: ${error.message}`,
+          });
+        }
+      }
+
+      const successCount = results.filter(r => r.success).length;
+      logger?.info('✅ [openShortMarketTool] Completed', { successCount, totalAccounts: accounts.length });
 
       return {
-        success: true,
-        orderId: result.data?.orderId || "mock-order-id",
-        message: `SHORT market order placed for ${context.size} contracts of ${symbol}`,
+        success: successCount > 0,
+        results,
+        message: `Открыто SHORT позиций: ${successCount}/${accounts.length} аккаунтов`,
       };
     } catch (error: any) {
-      logger?.error('❌ [openShortMarketTool] Error opening position', { error: error.message });
+      logger?.error('❌ [openShortMarketTool] Error', { error: error.message });
       return {
         success: false,
-        message: `Failed to open position: ${error.message}`,
+        results: [],
+        message: `Ошибка: ${error.message}`,
       };
     }
   },
@@ -190,21 +282,26 @@ export const openShortMarketTool = createTool({
 
 /**
  * Tool: Open Long Limit Position
- * Opens a long position at specified limit price
+ * Opens a long position at specified limit price on all active accounts
  */
 export const openLongLimitTool = createTool({
   id: "open-long-limit",
-  description: "Opens a LONG limit position on MEXC futures at specified price",
+  description: "Opens a LONG limit position on MEXC futures at specified price for all active accounts",
   inputSchema: z.object({
-    accountId: z.string().describe("Account ID from user's accounts"),
+    telegramUserId: z.string().describe("Telegram user ID"),
     price: z.number().describe("Limit price for entry"),
     symbol: z.string().describe("Trading pair symbol (e.g., BTC, ETH - without _USDT)"),
-    size: z.number().describe("Position size in contracts"),
-    leverage: z.number().optional().describe("Leverage multiplier (optional, uses default if not provided)"),
+    size: z.number().optional().describe("Position size in contracts (optional, uses account default)"),
+    leverage: z.number().optional().describe("Leverage multiplier (optional, uses account default)"),
   }),
   outputSchema: z.object({
     success: z.boolean(),
-    orderId: z.string().optional(),
+    results: z.array(z.object({
+      accountNumber: z.number(),
+      success: z.boolean(),
+      orderId: z.string().optional(),
+      message: z.string(),
+    })),
     message: z.string(),
   }),
   execute: async ({ context, mastra }) => {
@@ -212,38 +309,79 @@ export const openLongLimitTool = createTool({
     logger?.info('🟢 [openLongLimitTool] Opening LONG limit position', context);
 
     try {
-      const symbol = `${context.symbol}_USDT`;
-      const webUid = process.env.MEXC_WEB_UID || "";
-      const proxy = process.env.MEXC_PROXY || null;
-      
-      const result = await mexcApiCall(
-        "/api/v1/private/order/submit",
-        "POST",
-        webUid,
-        proxy,
-        {
-          symbol,
-          side: "BUY",
-          type: "LIMIT",
-          price: context.price,
-          vol: context.size,
-          leverage: context.leverage || 20,
-          openType: 1,
-        }
-      );
+      // Get all active accounts for this user
+      const accounts = await db.query.mexcAccounts.findMany({
+        where: and(
+          eq(mexcAccounts.telegramUserId, context.telegramUserId),
+          eq(mexcAccounts.isActive, true)
+        ),
+      });
 
-      logger?.info('✅ [openLongLimitTool] Limit order placed successfully', result);
+      if (accounts.length === 0) {
+        return {
+          success: false,
+          results: [],
+          message: "❌ Нет активных аккаунтов. Используйте /register для добавления аккаунта.",
+        };
+      }
+
+      const symbol = `${context.symbol}_USDT`;
+      const results = [];
+
+      // Execute trade on all active accounts
+      for (const account of accounts) {
+        try {
+          const tradeSize = context.size || account.defaultSize || 10;
+          const tradeLeverage = context.leverage || account.defaultLeverage || 20;
+
+          const result = await mexcApiCall(
+            "/api/v1/private/order/submit",
+            "POST",
+            account.webUid,
+            account.proxy || null,
+            {
+              symbol,
+              side: "BUY",
+              type: "LIMIT",
+              price: context.price,
+              vol: tradeSize,
+              leverage: tradeLeverage,
+              openType: 1,
+            }
+          );
+
+          results.push({
+            accountNumber: account.accountNumber,
+            success: true,
+            orderId: result.data?.orderId || `order-${Date.now()}`,
+            message: `✅ Аккаунт ${account.accountNumber}: LONG лимит ${tradeSize} контрактов по ${context.price}`,
+          });
+        } catch (error: any) {
+          logger?.error(`❌ [openLongLimitTool] Error for account ${account.accountNumber}`, {
+            error: error.message,
+          });
+          results.push({
+            accountNumber: account.accountNumber,
+            success: false,
+            message: `❌ Аккаунт ${account.accountNumber}: ${error.message}`,
+          });
+        }
+      }
+
+      const successCount = results.filter(r => r.success).length;
+      logger?.info('✅ [openLongLimitTool] Completed', { successCount, totalAccounts: accounts.length });
 
       return {
-        success: true,
-        orderId: result.data?.orderId || "mock-order-id",
-        message: `LONG limit order placed at ${context.price} USDT for ${context.size} contracts of ${symbol}`,
+        success: successCount > 0,
+        results,
+        message: `Размещено LONG лимитов: ${successCount}/${accounts.length} аккаунтов`,
       };
     } catch (error: any) {
-      logger?.error('❌ [openLongLimitTool] Error placing limit order', { error: error.message });
+      logger?.error('❌ [openLongLimitTool] Error', { error: error.message });
       return {
         success: false,
-        message: `Failed to place limit order: ${error.message}`,
+        results: [],
+        message: `Ошибка: ${error.message}`,
       };
     }
   },
@@ -251,21 +389,26 @@ export const openLongLimitTool = createTool({
 
 /**
  * Tool: Open Short Limit Position
- * Opens a short position at specified limit price
+ * Opens a short position at specified limit price on all active accounts
  */
 export const openShortLimitTool = createTool({
   id: "open-short-limit",
-  description: "Opens a SHORT limit position on MEXC futures at specified price",
+  description: "Opens a SHORT limit position on MEXC futures at specified price for all active accounts",
   inputSchema: z.object({
-    accountId: z.string().describe("Account ID from user's accounts"),
+    telegramUserId: z.string().describe("Telegram user ID"),
     price: z.number().describe("Limit price for entry"),
     symbol: z.string().describe("Trading pair symbol (e.g., BTC, ETH - without _USDT)"),
-    size: z.number().describe("Position size in contracts"),
-    leverage: z.number().optional().describe("Leverage multiplier (optional, uses default if not provided)"),
+    size: z.number().optional().describe("Position size in contracts (optional, uses account default)"),
+    leverage: z.number().optional().describe("Leverage multiplier (optional, uses account default)"),
   }),
   outputSchema: z.object({
     success: z.boolean(),
-    orderId: z.string().optional(),
+    results: z.array(z.object({
+      accountNumber: z.number(),
+      success: z.boolean(),
+      orderId: z.string().optional(),
+      message: z.string(),
+    })),
     message: z.string(),
   }),
   execute: async ({ context, mastra }) => {
@@ -273,38 +416,79 @@ export const openShortLimitTool = createTool({
     logger?.info('🔴 [openShortLimitTool] Opening SHORT limit position', context);
 
     try {
-      const symbol = `${context.symbol}_USDT`;
-      const webUid = process.env.MEXC_WEB_UID || "";
-      const proxy = process.env.MEXC_PROXY || null;
-      
-      const result = await mexcApiCall(
-        "/api/v1/private/order/submit",
-        "POST",
-        webUid,
-        proxy,
-        {
-          symbol,
-          side: "SELL",
-          type: "LIMIT",
-          price: context.price,
-          vol: context.size,
-          leverage: context.leverage || 20,
-          openType: 2,
-        }
-      );
+      // Get all active accounts for this user
+      const accounts = await db.query.mexcAccounts.findMany({
+        where: and(
+          eq(mexcAccounts.telegramUserId, context.telegramUserId),
+          eq(mexcAccounts.isActive, true)
+        ),
+      });
 
-      logger?.info('✅ [openShortLimitTool] Limit order placed successfully', result);
+      if (accounts.length === 0) {
+        return {
+          success: false,
+          results: [],
+          message: "❌ Нет активных аккаунтов. Используйте /register для добавления аккаунта.",
+        };
+      }
+
+      const symbol = `${context.symbol}_USDT`;
+      const results = [];
+
+      // Execute trade on all active accounts
+      for (const account of accounts) {
+        try {
+          const tradeSize = context.size || account.defaultSize || 10;
+          const tradeLeverage = context.leverage || account.defaultLeverage || 20;
+
+          const result = await mexcApiCall(
+            "/api/v1/private/order/submit",
+            "POST",
+            account.webUid,
+            account.proxy || null,
+            {
+              symbol,
+              side: "SELL",
+              type: "LIMIT",
+              price: context.price,
+              vol: tradeSize,
+              leverage: tradeLeverage,
+              openType: 2,
+            }
+          );
+
+          results.push({
+            accountNumber: account.accountNumber,
+            success: true,
+            orderId: result.data?.orderId || `order-${Date.now()}`,
+            message: `✅ Аккаунт ${account.accountNumber}: SHORT лимит ${tradeSize} контрактов по ${context.price}`,
+          });
+        } catch (error: any) {
+          logger?.error(`❌ [openShortLimitTool] Error for account ${account.accountNumber}`, {
+            error: error.message,
+          });
+          results.push({
+            accountNumber: account.accountNumber,
+            success: false,
+            message: `❌ Аккаунт ${account.accountNumber}: ${error.message}`,
+          });
+        }
+      }
+
+      const successCount = results.filter(r => r.success).length;
+      logger?.info('✅ [openShortLimitTool] Completed', { successCount, totalAccounts: accounts.length });
 
       return {
-        success: true,
-        orderId: result.data?.orderId || "mock-order-id",
-        message: `SHORT limit order placed at ${context.price} USDT for ${context.size} contracts of ${symbol}`,
+        success: successCount > 0,
+        results,
+        message: `Размещено SHORT лимитов: ${successCount}/${accounts.length} аккаунтов`,
       };
     } catch (error: any) {
-      logger?.error('❌ [openShortLimitTool] Error placing limit order', { error: error.message });
+      logger?.error('❌ [openShortLimitTool] Error', { error: error.message });
       return {
         success: false,
-        message: `Failed to place limit order: ${error.message}`,
+        results: [],
+        message: `Ошибка: ${error.message}`,
       };
     }
   },
@@ -312,19 +496,24 @@ export const openShortLimitTool = createTool({
 
 /**
  * Tool: Close Position
- * Closes an open position at market price
+ * Closes an open position at market price on all active accounts
  */
 export const closePositionTool = createTool({
   id: "close-position",
-  description: "Closes an open position at market price for specified symbol",
+  description: "Closes an open position at market price for specified symbol on all active accounts",
   inputSchema: z.object({
-    accountId: z.string().describe("Account ID from user's accounts"),
+    telegramUserId: z.string().describe("Telegram user ID"),
     symbol: z.string().describe("Trading pair symbol (e.g., BTC, ETH - without _USDT)"),
     size: z.number().optional().describe("Size to close (optional, closes entire position if not provided)"),
   }),
   outputSchema: z.object({
     success: z.boolean(),
-    orderId: z.string().optional(),
+    results: z.array(z.object({
+      accountNumber: z.number(),
+      success: z.boolean(),
+      orderId: z.string().optional(),
+      message: z.string(),
+    })),
     message: z.string(),
   }),
   execute: async ({ context, mastra }) => {
@@ -332,59 +521,99 @@ export const closePositionTool = createTool({
     logger?.info('🧹 [closePositionTool] Closing position', context);
 
     try {
-      const symbol = `${context.symbol}_USDT`;
-      const webUid = process.env.MEXC_WEB_UID || "";
-      const proxy = process.env.MEXC_PROXY || null;
-      
-      // First, get current position to determine side
-      const positions = await mexcApiCall(
-        "/api/v1/private/position/list",
-        "GET",
-        webUid,
-        proxy,
-        { symbol }
-      );
+      // Get all active accounts for this user
+      const accounts = await db.query.mexcAccounts.findMany({
+        where: and(
+          eq(mexcAccounts.telegramUserId, context.telegramUserId),
+          eq(mexcAccounts.isActive, true)
+        ),
+      });
 
-      // Find the position
-      const position = positions.data?.find((p: any) => p.symbol === symbol);
-      
-      if (!position || position.holdVol === 0) {
+      if (accounts.length === 0) {
         return {
           success: false,
-          message: `No open position found for ${symbol}`,
+          results: [],
+          message: "❌ Нет активных аккаунтов. Используйте /register для добавления аккаунта.",
         };
       }
 
-      // Close the position (opposite side of current position)
-      const closeSide = position.positionType === 1 ? "SELL" : "BUY";
-      const closeSize = context.size || position.holdVol;
+      const symbol = `${context.symbol}_USDT`;
+      const results = [];
 
-      const result = await mexcApiCall(
-        "/api/v1/private/order/submit",
-        "POST",
-        webUid,
-        proxy,
-        {
-          symbol,
-          side: closeSide,
-          type: "MARKET",
-          vol: closeSize,
-          closeType: 3, // Close position
+      // Execute close on all active accounts
+      for (const account of accounts) {
+        try {
+          // First, get current position to determine side
+          const positions = await mexcApiCall(
+            "/api/v1/private/position/list",
+            "GET",
+            account.webUid,
+            account.proxy || null,
+            { symbol }
+          );
+
+          // Find the position
+          const position = positions.data?.find((p: any) => p.symbol === symbol);
+          
+          if (!position || position.holdVol === 0) {
+            results.push({
+              accountNumber: account.accountNumber,
+              success: false,
+              message: `⚠️ Аккаунт ${account.accountNumber}: Нет открытой позиции для ${context.symbol}`,
+            });
+            continue;
+          }
+
+          // Close the position (opposite side of current position)
+          const closeSide = position.positionType === 1 ? "SELL" : "BUY";
+          const closeSize = context.size || position.holdVol;
+
+          const result = await mexcApiCall(
+            "/api/v1/private/order/submit",
+            "POST",
+            account.webUid,
+            account.proxy || null,
+            {
+              symbol,
+              side: closeSide,
+              type: "MARKET",
+              vol: closeSize,
+              closeType: 3, // Close position
+            }
+          );
+
+          results.push({
+            accountNumber: account.accountNumber,
+            success: true,
+            orderId: result.data?.orderId || `order-${Date.now()}`,
+            message: `✅ Аккаунт ${account.accountNumber}: Закрыто ${closeSize} контрактов`,
+          });
+        } catch (error: any) {
+          logger?.error(`❌ [closePositionTool] Error for account ${account.accountNumber}`, {
+            error: error.message,
+          });
+          results.push({
+            accountNumber: account.accountNumber,
+            success: false,
+            message: `❌ Аккаунт ${account.accountNumber}: ${error.message}`,
+          });
         }
-      );
+      }
 
-      logger?.info('✅ [closePositionTool] Position closed successfully', result);
+      const successCount = results.filter(r => r.success).length;
+      logger?.info('✅ [closePositionTool] Completed', { successCount, totalAccounts: accounts.length });
 
       return {
-        success: true,
-        orderId: result.data?.orderId || "mock-order-id",
-        message: `Closed ${closeSize} contracts of ${symbol}`,
+        success: successCount > 0,
+        results,
+        message: `Закрыто позиций: ${successCount}/${accounts.length} аккаунтов`,
       };
     } catch (error: any) {
-      logger?.error('❌ [closePositionTool] Error closing position', { error: error.message });
+      logger?.error('❌ [closePositionTool] Error', { error: error.message });
       return {
         success: false,
-        message: `Failed to close position: ${error.message}`,
+        results: [],
+        message: `Ошибка: ${error.message}`,
       };
     }
   },
@@ -392,18 +621,18 @@ export const closePositionTool = createTool({
 
 /**
  * Tool: Get Open Positions
- * Retrieves all open positions for the account
+ * Retrieves all open positions for all active accounts
  */
 export const getPositionsTool = createTool({
   id: "get-positions",
   description: "Retrieves all open positions for all active accounts",
   inputSchema: z.object({
-    accountId: z.string().optional().describe("Specific account ID (optional, returns all if not provided)"),
+    telegramUserId: z.string().describe("Telegram user ID"),
   }),
   outputSchema: z.object({
     success: z.boolean(),
     positions: z.array(z.object({
-      accountId: z.string(),
+      accountNumber: z.number(),
       symbol: z.string(),
       side: z.string(),
       entryPrice: z.number(),
@@ -421,42 +650,74 @@ export const getPositionsTool = createTool({
     logger?.info('📦 [getPositionsTool] Fetching open positions', context);
 
     try {
-      const webUid = process.env.MEXC_WEB_UID || "";
-      const proxy = process.env.MEXC_PROXY || null;
-      
-      const result = await mexcApiCall(
-        "/api/v1/private/position/list",
-        "GET",
-        webUid,
-        proxy,
-        {}
-      );
+      // Get all active accounts for this user
+      const accounts = await db.query.mexcAccounts.findMany({
+        where: and(
+          eq(mexcAccounts.telegramUserId, context.telegramUserId),
+          eq(mexcAccounts.isActive, true)
+        ),
+      });
 
-      const positions = (result.data || []).map((p: any) => ({
-        accountId: context.accountId || "main",
-        symbol: p.symbol,
-        side: p.positionType === 1 ? "LONG" : "SHORT",
-        entryPrice: p.openAvgPrice,
-        currentPrice: p.fairPrice,
-        liquidationPrice: p.liquidatePrice,
-        size: p.holdVol,
-        leverage: p.leverage,
-        pnl: p.unrealisedPnl,
-        margin: p.margin,
-      }));
+      if (accounts.length === 0) {
+        return {
+          success: false,
+          positions: [],
+          message: "❌ Нет активных аккаунтов. Используйте /register для добавления аккаунта.",
+        };
+      }
 
-      logger?.info('✅ [getPositionsTool] Positions retrieved successfully', { count: positions.length });
+      const allPositions = [];
+
+      // Fetch positions from all active accounts
+      for (const account of accounts) {
+        try {
+          const result = await mexcApiCall(
+            "/api/v1/private/position/list",
+            "GET",
+            account.webUid,
+            account.proxy || null,
+            {}
+          );
+
+          const accountPositions = (result.data || [])
+            .filter((p: any) => p.holdVol > 0)
+            .map((p: any) => ({
+              accountNumber: account.accountNumber,
+              symbol: p.symbol,
+              side: p.positionType === 1 ? "LONG" : "SHORT",
+              entryPrice: p.openAvgPrice,
+              currentPrice: p.fairPrice,
+              liquidationPrice: p.liquidatePrice,
+              size: p.holdVol,
+              leverage: p.leverage,
+              pnl: p.unrealisedPnl,
+              margin: p.margin,
+            }));
+
+          allPositions.push(...accountPositions);
+        } catch (error: any) {
+          logger?.error(`❌ [getPositionsTool] Error for account ${account.accountNumber}`, {
+            error: error.message,
+          });
+        }
+      }
+
+      logger?.info('✅ [getPositionsTool] Positions retrieved successfully', { 
+        totalPositions: allPositions.length,
+        totalAccounts: accounts.length 
+      });
 
       return {
         success: true,
-        positions,
-        message: `Found ${positions.length} open position(s)`,
+        positions: allPositions,
+        message: `Найдено ${allPositions.length} открытых позиций на ${accounts.length} аккаунтах`,
       };
     } catch (error: any) {
-      logger?.error('❌ [getPositionsTool] Error fetching positions', { error: error.message });
+      logger?.error('❌ [getPositionsTool] Error', { error: error.message });
       return {
         success: false,
-        message: `Failed to fetch positions: ${error.message}`,
+        positions: [],
+        message: `Ошибка: ${error.message}`,
       };
     }
   },
@@ -464,18 +725,18 @@ export const getPositionsTool = createTool({
 
 /**
  * Tool: Get Account Balance
- * Retrieves account balance information
+ * Retrieves balance and account information for all active MEXC accounts
  */
 export const getBalanceTool = createTool({
   id: "get-balance",
   description: "Retrieves balance and account information for all active MEXC accounts",
   inputSchema: z.object({
-    accountId: z.string().optional().describe("Specific account ID (optional)"),
+    telegramUserId: z.string().describe("Telegram user ID"),
   }),
   outputSchema: z.object({
     success: z.boolean(),
     accounts: z.array(z.object({
-      accountId: z.string(),
+      accountNumber: z.number(),
       status: z.string(),
       balance: z.number(),
       leverage: z.number(),
@@ -489,38 +750,75 @@ export const getBalanceTool = createTool({
     logger?.info('💰 [getBalanceTool] Fetching account balance', context);
 
     try {
-      const webUid = process.env.MEXC_WEB_UID || "";
-      const proxy = process.env.MEXC_PROXY || null;
-      
-      const result = await mexcApiCall(
-        "/api/v1/private/account/assets",
-        "GET",
-        webUid,
-        proxy,
-        {}
-      );
+      // Get all active accounts for this user
+      const accounts = await db.query.mexcAccounts.findMany({
+        where: and(
+          eq(mexcAccounts.telegramUserId, context.telegramUserId),
+          eq(mexcAccounts.isActive, true)
+        ),
+      });
 
-      const accounts = [{
-        accountId: context.accountId || "main",
-        status: "✅ Active",
-        balance: result.data?.availableBalance || 0,
-        leverage: 20,
-        size: 10,
-        proxy: proxy || undefined,
-      }];
+      if (accounts.length === 0) {
+        return {
+          success: false,
+          accounts: [],
+          message: "❌ Нет активных аккаунтов. Используйте /register для добавления аккаунта.",
+        };
+      }
 
-      logger?.info('✅ [getBalanceTool] Balance retrieved successfully', accounts);
+      const allBalances = [];
+
+      // Fetch balance from all active accounts
+      for (const account of accounts) {
+        try {
+          const result = await mexcApiCall(
+            "/api/v1/private/account/assets",
+            "GET",
+            account.webUid,
+            account.proxy || null,
+            {}
+          );
+
+          allBalances.push({
+            accountNumber: account.accountNumber,
+            status: "✅ Активен",
+            balance: result.data?.availableBalance || 0,
+            leverage: account.defaultLeverage || 20,
+            size: account.defaultSize || 10,
+            proxy: account.proxy || undefined,
+          });
+        } catch (error: any) {
+          logger?.error(`❌ [getBalanceTool] Error for account ${account.accountNumber}`, {
+            error: error.message,
+          });
+          allBalances.push({
+            accountNumber: account.accountNumber,
+            status: "❌ Ошибка",
+            balance: 0,
+            leverage: account.defaultLeverage || 20,
+            size: account.defaultSize || 10,
+            proxy: account.proxy || undefined,
+          });
+        }
+      }
+
+      const totalBalance = allBalances.reduce((sum, acc) => sum + acc.balance, 0);
+      logger?.info('✅ [getBalanceTool] Balances retrieved successfully', { 
+        totalAccounts: accounts.length,
+        totalBalance 
+      });
 
       return {
         success: true,
-        accounts,
-        message: `Balance: ${accounts[0].balance} USDT`,
+        accounts: allBalances,
+        message: `Общий баланс: ${totalBalance.toFixed(2)} USDT на ${accounts.length} аккаунтах`,
       };
     } catch (error: any) {
-      logger?.error('❌ [getBalanceTool] Error fetching balance', { error: error.message });
+      logger?.error('❌ [getBalanceTool] Error', { error: error.message });
       return {
         success: false,
-        message: `Failed to fetch balance: ${error.message}`,
+        accounts: [],
+        message: `Ошибка: ${error.message}`,
       };
     }
   },
@@ -528,18 +826,19 @@ export const getBalanceTool = createTool({
 
 /**
  * Tool: Get Open Orders
- * Retrieves all open orders
+ * Retrieves all open orders for all active accounts
  */
 export const getOrdersTool = createTool({
   id: "get-orders",
-  description: "Retrieves all open orders for specified symbol or all symbols",
+  description: "Retrieves all open orders for specified symbol or all symbols across all active accounts",
   inputSchema: z.object({
-    accountId: z.string().optional().describe("Specific account ID (optional)"),
+    telegramUserId: z.string().describe("Telegram user ID"),
     symbol: z.string().optional().describe("Trading pair symbol (optional, returns all if not provided)"),
   }),
   outputSchema: z.object({
     success: z.boolean(),
     orders: z.array(z.object({
+      accountNumber: z.number(),
       orderId: z.string(),
       symbol: z.string(),
       side: z.string(),
@@ -555,44 +854,74 @@ export const getOrdersTool = createTool({
     logger?.info('📋 [getOrdersTool] Fetching open orders', context);
 
     try {
-      const webUid = process.env.MEXC_WEB_UID || "";
-      const proxy = process.env.MEXC_PROXY || null;
-      
+      // Get all active accounts for this user
+      const accounts = await db.query.mexcAccounts.findMany({
+        where: and(
+          eq(mexcAccounts.telegramUserId, context.telegramUserId),
+          eq(mexcAccounts.isActive, true)
+        ),
+      });
+
+      if (accounts.length === 0) {
+        return {
+          success: false,
+          orders: [],
+          message: "❌ Нет активных аккаунтов. Используйте /register для добавления аккаунта.",
+        };
+      }
+
+      const allOrders = [];
       const params: any = {};
       if (context.symbol) {
         params.symbol = `${context.symbol}_USDT`;
       }
 
-      const result = await mexcApiCall(
-        "/api/v1/private/order/list/open_orders",
-        "GET",
-        webUid,
-        proxy,
-        params
-      );
+      // Fetch orders from all active accounts
+      for (const account of accounts) {
+        try {
+          const result = await mexcApiCall(
+            "/api/v1/private/order/list/open_orders",
+            "GET",
+            account.webUid,
+            account.proxy || null,
+            params
+          );
 
-      const orders = (result.data || []).map((o: any) => ({
-        orderId: o.orderId,
-        symbol: o.symbol,
-        side: o.side,
-        type: o.orderType,
-        price: o.price,
-        size: o.vol,
-        filled: o.dealVol,
-      }));
+          const accountOrders = (result.data || []).map((o: any) => ({
+            accountNumber: account.accountNumber,
+            orderId: o.orderId,
+            symbol: o.symbol,
+            side: o.side,
+            type: o.orderType,
+            price: o.price,
+            size: o.vol,
+            filled: o.dealVol,
+          }));
 
-      logger?.info('✅ [getOrdersTool] Orders retrieved successfully', { count: orders.length });
+          allOrders.push(...accountOrders);
+        } catch (error: any) {
+          logger?.error(`❌ [getOrdersTool] Error for account ${account.accountNumber}`, {
+            error: error.message,
+          });
+        }
+      }
+
+      logger?.info('✅ [getOrdersTool] Orders retrieved successfully', { 
+        totalOrders: allOrders.length,
+        totalAccounts: accounts.length 
+      });
 
       return {
         success: true,
-        orders,
-        message: `Found ${orders.length} open order(s)`,
+        orders: allOrders,
+        message: `Найдено ${allOrders.length} открытых ордеров на ${accounts.length} аккаунтах`,
       };
     } catch (error: any) {
-      logger?.error('❌ [getOrdersTool] Error fetching orders', { error: error.message });
+      logger?.error('❌ [getOrdersTool] Error', { error: error.message });
       return {
         success: false,
-        message: `Failed to fetch orders: ${error.message}`,
+        orders: [],
+        message: `Ошибка: ${error.message}`,
       };
     }
   },
@@ -600,18 +929,23 @@ export const getOrdersTool = createTool({
 
 /**
  * Tool: Cancel Orders
- * Cancels all open orders for a symbol
+ * Cancels all open orders for a symbol on all active accounts
  */
 export const cancelOrdersTool = createTool({
   id: "cancel-orders",
-  description: "Cancels all open orders for specified trading symbol",
+  description: "Cancels all open orders for specified trading symbol on all active accounts",
   inputSchema: z.object({
-    accountId: z.string().describe("Account ID from user's accounts"),
+    telegramUserId: z.string().describe("Telegram user ID"),
     symbol: z.string().describe("Trading pair symbol (e.g., BTC, ETH - without _USDT)"),
   }),
   outputSchema: z.object({
     success: z.boolean(),
-    cancelledCount: z.number().optional(),
+    results: z.array(z.object({
+      accountNumber: z.number(),
+      success: z.boolean(),
+      cancelledCount: z.number().optional(),
+      message: z.string(),
+    })),
     message: z.string(),
   }),
   execute: async ({ context, mastra }) => {
@@ -619,30 +953,73 @@ export const cancelOrdersTool = createTool({
     logger?.info('❌ [cancelOrdersTool] Cancelling orders', context);
 
     try {
-      const symbol = `${context.symbol}_USDT`;
-      const webUid = process.env.MEXC_WEB_UID || "";
-      const proxy = process.env.MEXC_PROXY || null;
-      
-      const result = await mexcApiCall(
-        "/api/v1/private/order/cancel_all",
-        "POST",
-        webUid,
-        proxy,
-        { symbol }
-      );
+      // Get all active accounts for this user
+      const accounts = await db.query.mexcAccounts.findMany({
+        where: and(
+          eq(mexcAccounts.telegramUserId, context.telegramUserId),
+          eq(mexcAccounts.isActive, true)
+        ),
+      });
 
-      logger?.info('✅ [cancelOrdersTool] Orders cancelled successfully', result);
+      if (accounts.length === 0) {
+        return {
+          success: false,
+          results: [],
+          message: "❌ Нет активных аккаунтов. Используйте /register для добавления аккаунта.",
+        };
+      }
+
+      const symbol = `${context.symbol}_USDT`;
+      const results = [];
+
+      // Cancel orders on all active accounts
+      for (const account of accounts) {
+        try {
+          const result = await mexcApiCall(
+            "/api/v1/private/order/cancel_all",
+            "POST",
+            account.webUid,
+            account.proxy || null,
+            { symbol }
+          );
+
+          results.push({
+            accountNumber: account.accountNumber,
+            success: true,
+            cancelledCount: result.data?.cancelledCount || 0,
+            message: `✅ Аккаунт ${account.accountNumber}: Отменено ${result.data?.cancelledCount || 0} ордеров`,
+          });
+        } catch (error: any) {
+          logger?.error(`❌ [cancelOrdersTool] Error for account ${account.accountNumber}`, {
+            error: error.message,
+          });
+          results.push({
+            accountNumber: account.accountNumber,
+            success: false,
+            message: `❌ Аккаунт ${account.accountNumber}: ${error.message}`,
+          });
+        }
+      }
+
+      const successCount = results.filter(r => r.success).length;
+      const totalCancelled = results.reduce((sum, r) => sum + (r.cancelledCount || 0), 0);
+      logger?.info('✅ [cancelOrdersTool] Completed', { 
+        successCount, 
+        totalAccounts: accounts.length,
+        totalCancelled 
+      });
 
       return {
-        success: true,
-        cancelledCount: result.data?.cancelledCount || 0,
-        message: `Cancelled all orders for ${symbol}`,
+        success: successCount > 0,
+        results,
+        message: `Отменено ${totalCancelled} ордеров на ${successCount}/${accounts.length} аккаунтах`,
       };
     } catch (error: any) {
-      logger?.error('❌ [cancelOrdersTool] Error cancelling orders', { error: error.message });
+      logger?.error('❌ [cancelOrdersTool] Error', { error: error.message });
       return {
         success: false,
-        message: `Failed to cancel orders: ${error.message}`,
+        results: [],
+        message: `Ошибка: ${error.message}`,
       };
     }
   },

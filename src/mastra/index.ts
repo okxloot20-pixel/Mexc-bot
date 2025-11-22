@@ -227,14 +227,16 @@ export const mastra = new Mastra({
           });
 
           const chatId = triggerInfo.payload?.message?.chat?.id;
+          const telegramUserId = String(triggerInfo.payload?.message?.from?.id || '');
           const messageId = triggerInfo.payload?.message?.message_id;
-          const threadId = `telegram-${triggerInfo.params.userName}-${Date.now()}`;
+          const threadId = `telegram-${telegramUserId}-${Date.now()}`;
 
           const run = await telegramTradingWorkflow.createRunAsync();
           await run.start({
             inputData: {
               threadId,
               userName: triggerInfo.params.userName,
+              telegramUserId,
               message: triggerInfo.params.message,
               chatId,
             },
