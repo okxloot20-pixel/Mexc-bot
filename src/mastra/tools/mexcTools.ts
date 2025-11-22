@@ -402,8 +402,17 @@ export const closePositionTool = createTool({
           const posResponse = await client.getOpenPositions("");
           const allPositions = Array.isArray(posResponse) ? posResponse : [];
           
+          logger?.info(`📍 Got positions response`, { posResponse, allPositions, allPositionsLength: allPositions.length });
+          
+          // Log all positions to see what we have
+          if (allPositions.length > 0) {
+            logger?.info(`📋 All open positions:`, allPositions.map((p: any) => ({ symbol: p.symbol, side: p.side, holdVol: p.holdVol })));
+          }
+          
           // Filter for our symbol
           const positions = allPositions.filter((pos: any) => pos.symbol === symbol);
+          
+          logger?.info(`🔍 Filtered positions for ${symbol}:`, { positions, filteredCount: positions.length });
 
           if (positions.length === 0) {
             results.push(`⚠️ Аккаунт ${account.accountNumber}: нет открытых позиций по ${symbol}`);
