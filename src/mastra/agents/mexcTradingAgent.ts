@@ -96,15 +96,20 @@ async function getSecondBidPrice(symbol: string): Promise<number | null> {
     
     logger?.info(`📊 Orderbook bids: ${JSON.stringify(data.bids?.slice(0, 3))}`);
     
-    // Check if response has bids array with at least 2 elements
-    if (Array.isArray(data.bids) && data.bids.length > 1) {
-      // Second element is second best bid
-      const secondBid = parseFloat(data.bids[1][0]);
-      logger?.info(`💰 Second bid found: ${secondBid} for ${symbol}`);
-      return secondBid;
+    // Check if response has bids array
+    if (Array.isArray(data.bids) && data.bids.length > 0) {
+      // Prefer second bid if available, otherwise use first bid
+      const bidIndex = data.bids.length > 1 ? 1 : 0;
+      const bidPrice = parseFloat(data.bids[bidIndex][0]);
+      if (bidIndex === 1) {
+        logger?.info(`💰 Second bid found: ${bidPrice} for ${symbol}`);
+      } else {
+        logger?.info(`💰 Using best bid (second bid unavailable): ${bidPrice} for ${symbol}`);
+      }
+      return bidPrice;
     }
     
-    logger?.error(`❌ Not enough bids in API response for ${symbol}`);
+    logger?.error(`❌ No bids in API response for ${symbol}`);
     return null;
   } catch (error: any) {
     const logger = globalMastra?.getLogger();
@@ -154,22 +159,25 @@ async function getSecondAskPrice(symbol: string): Promise<string | null> {
     const data = await response.json();
     
     logger?.info(`📊 Full orderbook response:`, JSON.stringify({ bidsLength: data.bids?.length, asksLength: data.asks?.length }));
-    logger?.info(`📊 All bids: ${JSON.stringify(data.bids?.slice(0, 10))}`);
     logger?.info(`📊 All asks: ${JSON.stringify(data.asks?.slice(0, 10))}`);
     
-    // Check if response has asks array with at least 2 elements
-    if (Array.isArray(data.asks) && data.asks.length > 1) {
-      // Second element is second best ask (asks[1])
-      // Keep as STRING to preserve precision for MEXC API
-      const secondAskRaw = data.asks[1][0];
+    // Check if response has asks array
+    if (Array.isArray(data.asks) && data.asks.length > 0) {
+      // Prefer second ask if available, otherwise use first ask
+      const askIndex = data.asks.length > 1 ? 1 : 0;
+      const secondAskRaw = data.asks[askIndex][0];
       const secondAskNumeric = parseFloat(secondAskRaw);
-      logger?.info(`💰 Second ask found at asks[1] (RAW STRING): "${secondAskRaw}"`);
-      logger?.info(`💰 Second ask (numeric): ${secondAskNumeric}`);
-      logger?.info(`🔍 DEBUG asks[0]="${data.asks[0][0]}", asks[1]="${data.asks[1][0]}"`);
+      if (askIndex === 1) {
+        logger?.info(`💰 Second ask found at asks[1] (RAW STRING): "${secondAskRaw}"`);
+        logger?.info(`💰 Second ask (numeric): ${secondAskNumeric}`);
+      } else {
+        logger?.info(`💰 Using best ask (second ask unavailable): "${secondAskRaw}"`);
+        logger?.info(`💰 Best ask (numeric): ${secondAskNumeric}`);
+      }
       return secondAskRaw; // Return STRING not number
     }
     
-    logger?.error(`❌ Not enough asks in API response for ${symbol}`);
+    logger?.error(`❌ No asks in API response for ${symbol}`);
     return null;
   } catch (error: any) {
     const logger = globalMastra?.getLogger();
