@@ -454,9 +454,11 @@ export const closePositionTool = createTool({
 
           for (const pos of positions) {
             const closeSize = context.size || Math.abs((pos as any).holdVol);
-            const closeSide = (pos as any).side === 1 ? 4 : 2;
+            // positionType: 1 = LONG, 2 = SHORT
+            // closeSide: 4 = close LONG, 2 = close SHORT
+            const closeSide = (pos as any).positionType === 1 ? 4 : 2;
 
-            logger?.info(`📍 Closing position`, { symbol, closeSize, closeSide, side: (pos as any).side });
+            logger?.info(`📍 Closing position`, { symbol, closeSize, closeSide, positionType: (pos as any).positionType });
 
             await client.submitOrder({
               symbol,
@@ -775,6 +777,8 @@ export const closeShortAtPriceTool = createTool({
           // Get all positions
           const posResponse = await client.getOpenPositions("");
           
+          logger?.info(`📍 Position response for account ${account.accountNumber}:`, posResponse);
+          
           // Extract data array from response object
           let allPositions: any[] = [];
           if (posResponse && typeof posResponse === 'object' && Array.isArray(posResponse.data)) {
@@ -783,8 +787,12 @@ export const closeShortAtPriceTool = createTool({
             allPositions = posResponse;
           }
           
-          // Filter for SHORT positions of our symbol
-          const positions = allPositions.filter((pos: any) => pos.symbol === symbol && pos.side === 2); // side 2 = SHORT
+          logger?.info(`📋 All positions for account ${account.accountNumber}:`, allPositions.map((p: any) => ({ symbol: p.symbol, positionType: p.positionType, holdVol: p.holdVol })));
+          
+          // Filter for SHORT positions of our symbol (positionType: 2 = SHORT)
+          const positions = allPositions.filter((pos: any) => pos.symbol === symbol && pos.positionType === 2);
+          
+          logger?.info(`🔍 Filtered SHORT positions for ${symbol} (positionType=2):`, positions.map((p: any) => ({ symbol: p.symbol, positionType: p.positionType, holdVol: p.holdVol })));
           
           if (positions.length === 0) {
             results.push(`⚠️ Аккаунт ${account.accountNumber}: нет SHORT позиций по ${symbol}`);
@@ -793,25 +801,30 @@ export const closeShortAtPriceTool = createTool({
 
           for (const pos of positions) {
             const closeSize = context.size || Math.abs((pos as any).holdVol);
-            // For SHORT, closing = BUY (side 4)
-            const closeSide = 4;
+            // positionType: 1 = LONG (closeSide 4), 2 = SHORT (closeSide 2)
+            const closeSide = 2; // Always 2 for SHORT positions
 
             logger?.info(`📍 Closing SHORT at price`, { symbol, price: context.price, size: closeSize });
 
-            await client.submitOrder({
-              symbol,
-              side: closeSide,
-              vol: closeSize,
-              type: 1, // Limit order
-              price: context.price,
-              openType: 2,
-            });
-
-            results.push(`✅ Аккаунт ${account.accountNumber}: SHORT закрыта по ${context.price}, ${closeSize} контрактов`);
+            try {
+              await client.submitOrder({
+                symbol,
+                side: closeSide,
+                vol: closeSize,
+                type: 1, // Limit order
+                price: context.price,
+                openType: 2,
+              });
+              results.push(`✅ Аккаунт ${account.accountNumber}: SHORT закрыта по ${context.price}, ${closeSize} контрактов`);
+            } catch (submitError: any) {
+              logger?.error(`❌ Submit order error`, { error: submitError });
+              throw submitError;
+            }
           }
         } catch (error: any) {
-          logger?.error(`❌ Error closing SHORT for account ${account.accountNumber}`, { error: error.message });
-          results.push(`❌ Аккаунт ${account.accountNumber}: ${error.message}`);
+          const errorMsg = error?.message || JSON.stringify(error) || "Unknown error";
+          logger?.error(`❌ Error closing SHORT for account ${account.accountNumber}`, { error: errorMsg });
+          results.push(`❌ Аккаунт ${account.accountNumber}: ${errorMsg}`);
         }
       }
 
