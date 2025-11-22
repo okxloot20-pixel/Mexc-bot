@@ -150,16 +150,19 @@ async function getSecondAskPrice(symbol: string): Promise<number | null> {
     logger?.info(`📊 Fetching second ask price (second SELL price) for ${symbol}`);
     
     // Use correct MEXC API endpoint for depth/orderbook
-    const response = await fetch(`https://api.mexc.com/api/v3/depth?symbol=${symbol}&limit=5`);
+    const response = await fetch(`https://api.mexc.com/api/v3/depth?symbol=${symbol}&limit=10`);
     const data = await response.json();
     
-    logger?.info(`📊 Orderbook asks: ${JSON.stringify(data.asks?.slice(0, 3))}`);
+    logger?.info(`📊 Full orderbook response:`, JSON.stringify({ bidsLength: data.bids?.length, asksLength: data.asks?.length }));
+    logger?.info(`📊 All bids: ${JSON.stringify(data.bids?.slice(0, 10))}`);
+    logger?.info(`📊 All asks: ${JSON.stringify(data.asks?.slice(0, 10))}`);
     
     // Check if response has asks array with at least 2 elements
     if (Array.isArray(data.asks) && data.asks.length > 1) {
-      // Second element is second best ask
+      // Second element is second best ask (asks[1])
       const secondAsk = parseFloat(data.asks[1][0]);
-      logger?.info(`💰 Second ask found: ${secondAsk} for ${symbol}`);
+      logger?.info(`💰 Second ask found at asks[1]: ${secondAsk} for ${symbol}`);
+      logger?.info(`🔍 DEBUG asks[0]=${data.asks[0][0]}, asks[1]=${data.asks[1][0]}`);
       return secondAsk;
     }
     
