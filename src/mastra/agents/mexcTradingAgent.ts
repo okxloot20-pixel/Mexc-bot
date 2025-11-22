@@ -53,11 +53,11 @@ async function executeToolDirect(tool: any, context: any): Promise<string> {
   }
 }
 
-// Helper: Get PnL for a specific symbol
+// Helper: Get PnL for a specific symbol from trade history
 async function getPositionPnLForSymbol(userId: string, symbol: string): Promise<string> {
   try {
     const logger = globalMastra?.getLogger();
-    logger?.info(`📊 Getting PnL for symbol ${symbol} for user ${userId}`);
+    logger?.info(`📊 Getting PnL for symbol ${symbol} from trade history`);
     
     // Get active accounts
     const accounts = await db.query.mexcAccounts.findMany({
@@ -84,41 +84,69 @@ async function getPositionPnLForSymbol(userId: string, symbol: string): Promise<
           logLevel: "INFO"
         });
         
+        // Try to get closed positions history (from getHistory or similar method)
+        const fullSymbol = `${symbol}_USDT`;
+        
+        try {
+          // Try getHistory() or getPositionHistory() to get closed positions with realized PnL
+          const historyResponse = await (client as any).getHistory?.() || 
+                                  await (client as any).getPositionHistory?.() ||
+                                  await (client as any).getClosedPositions?.("");
+          
+          if (historyResponse) {
+            const historyData = Array.isArray(historyResponse) ? historyResponse : (historyResponse as any)?.data || [];
+            
+            // Filter for current symbol and get the most recent entry
+            const recentTrades = historyData
+              .filter((h: any) => h.symbol === fullSymbol)
+              .sort((a: any, b: any) => ((b.closeTime || 0) - (a.closeTime || 0)))
+              .slice(0, 1);
+            
+            if (recentTrades.length > 0) {
+              const trade = recentTrades[0];
+              // Use realizedPnl or profitReal from history (these are the ACTUAL realized values)
+              const actualPnlUsd = (trade as any).realizedPnl || (trade as any).profitReal || (trade as any).pnl || 0;
+              const actualPnlPercent = (trade as any).profitPercent || (trade as any).profitRatio || 0;
+              
+              const pnlEmoji = actualPnlUsd > 0 ? "📈" : "📉";
+              const sideText = (trade as any).positionType === 1 || (trade as any).side === 1 ? "LONG" : "SHORT";
+              
+              pnlLines.push(`${pnlEmoji} ${sideText}: ${actualPnlUsd > 0 ? "+" : ""}${actualPnlUsd.toFixed(2)}$ (${actualPnlPercent > 0 ? "+" : ""}${(actualPnlPercent * 100).toFixed(2)}%)`);
+              totalPnlUsd += actualPnlUsd;
+              countPositions++;
+              
+              logger?.info(`📊 Got realized PnL from history for ${fullSymbol}:`, { actualPnlUsd, actualPnlPercent });
+              continue;
+            }
+          }
+        } catch (historyError: any) {
+          logger?.warn(`⚠️ Could not get history data`, { error: historyError.message });
+        }
+        
+        // Fallback: Get current unrealized PnL from open positions
+        logger?.info(`📊 Falling back to open positions for ${fullSymbol}`);
         const posResponse = await client.getOpenPositions("");
         const allPositions = Array.isArray(posResponse) ? posResponse : (posResponse as any)?.data || [];
         
-        // Find position for this symbol
-        const fullSymbol = `${symbol}_USDT`;
         const position = allPositions.find((p: any) => p.symbol === fullSymbol);
         
         if (position) {
           const pnlUsd = (position as any).realised || 0;
           const pnlPercent = ((position as any).profitRatio || 0) * 100;
-          
-          // Account for closing commission (1% of position value)
-          // Estimate: holdVol * averagePrice (use currentPrice as proxy)
-          const holdVol = (position as any).holdVol || 0;
-          const markPrice = (position as any).markPrice || (position as any).currentPrice || 1;
-          const closingCommission = (holdVol * markPrice * 0.01);
-          
-          // Net PnL after closing commission
-          const pnlAfterCommission = pnlUsd - closingCommission;
-          const pnlAfterPercent = (pnlPercent * pnlUsd / (pnlUsd + closingCommission)) || pnlPercent;
-          
-          const pnlEmoji = pnlAfterCommission > 0 ? "📈" : "📉";
+          const pnlEmoji = pnlUsd > 0 ? "📈" : "📉";
           const sideText = (position as any).positionType === 1 ? "LONG" : "SHORT";
           
-          pnlLines.push(`${pnlEmoji} ${sideText}: ${pnlAfterCommission > 0 ? "+" : ""}${pnlAfterCommission.toFixed(2)}$ (${pnlAfterPercent > 0 ? "+" : ""}${pnlAfterPercent.toFixed(2)}%) | комиссия: -${closingCommission.toFixed(2)}$`);
-          totalPnlUsd += pnlAfterCommission;
+          pnlLines.push(`${pnlEmoji} ${sideText}: ${pnlUsd > 0 ? "+" : ""}${pnlUsd.toFixed(2)}$ (${pnlPercent > 0 ? "+" : ""}${pnlPercent.toFixed(2)}%)`);
+          totalPnlUsd += pnlUsd;
           countPositions++;
         }
       } catch (error: any) {
-        logger?.warn(`⚠️ Error getting position for account ${account.accountNumber}`, { error: error.message });
+        logger?.warn(`⚠️ Error getting PnL for account ${account.accountNumber}`, { error: error.message });
       }
     }
     
     if (pnlLines.length > 0) {
-      let result = `\n\n📊 *Текущий PnL перед закрытием:*\n`;
+      let result = `\n\n📊 *Реализованный PnL перед закрытием:*\n`;
       result += pnlLines.join("\n");
       if (countPositions > 1) {
         const totalPnlEmoji = totalPnlUsd > 0 ? "📈" : "📉";
