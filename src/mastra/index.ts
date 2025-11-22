@@ -8,10 +8,13 @@ import { NonRetriableError } from "inngest";
 import { z } from "zod";
 
 import { sharedPostgresStorage } from "./storage";
+import { db } from "./storage/db";
+import { mexcAccounts } from "./storage/schema";
 import { inngest, inngestServe } from "./inngest";
 import { telegramTradingWorkflow } from "./workflows/telegramTradingWorkflow";
 import { mexcTradingAgent, parseAndExecuteCommand } from "./agents/mexcTradingAgent";
 import { registerTelegramTrigger } from "../triggers/telegramTriggers";
+import { eq, and } from "drizzle-orm";
 
 class ProductionPinoLogger extends MastraLogger {
   protected logger: pino.Logger;
@@ -314,10 +317,6 @@ export const mastra = new Mastra({
                   });
                 } else if (callbackData.startsWith("toggle_account_")) {
                   // Handle account toggle via callback
-                  const { db } = require("../storage/db");
-                  const { mexcAccounts } = require("../storage/schema");
-                  const { eq, and } = require("drizzle-orm");
-                  
                   const accountNumber = parseInt(callbackData.split("_")[2]);
                   
                   // Get current account status
