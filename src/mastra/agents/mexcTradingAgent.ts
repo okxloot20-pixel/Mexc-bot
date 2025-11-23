@@ -486,7 +486,7 @@ export async function parseAndExecuteCommand(message: string, userId: string, ma
       type: "keyboard_menu",
       text: "🤖 *Mexc Futures Trading Bot*",
       keyboard: [
-        ["ℹ️ Help", "📊 Позиции"],
+        ["📋 Команды", "📊 Позиции"],
         ["👤 Аккаунт", "📝 Создание"],
         ["💰 Баланс"],
         ["🚨 Сигналы", "⚙️ Настройки"]
@@ -1095,7 +1095,7 @@ U_ID: ${uId.substring(0, 30)}...
     });
   }
   
-  if (message === "ℹ️ Help") {
+  if (message === "📋 Команды") {
     return JSON.stringify({
       type: "keyboard_menu",
       text: "📋 *Список команд*\n\n/lb SYMBOL - LONG лимит по второй цене на продажу (BBO)\n/sb SYMBOL - SHORT лимит по второй цене на покупку (BBO)\n/lm SYMBOL - LONG маркет\n/sm SYMBOL - SHORT маркет\n/sl цена SYMBOL - SHORT лимит лесенкой\n/close SYMBOL - Закрыть позицию по маркету\n/closebs SYMBOL - Закрыть SHORT по второй цене на продажу (BBO)\n/positions - Открытые позиции\n/balance - Баланс\n/register - Регистрация аккаунтов\n/accounts - Мои аккаунты",
@@ -1114,7 +1114,7 @@ U_ID: ${uId.substring(0, 30)}...
       type: "keyboard_menu",
       text: "🤖 *Mexc Futures Trading Bot*",
       keyboard: [
-        ["ℹ️ Help", "📊 Позиции"],
+        ["📋 Команды", "📊 Позиции"],
         ["👤 Аккаунт", "📝 Создание"],
         ["💰 Баланс"],
         ["🚨 Сигналы", "⚙️ Настройки"]
@@ -1127,7 +1127,7 @@ U_ID: ${uId.substring(0, 30)}...
     type: "keyboard_menu",
     text: "🤖 *Mexc Futures Trading Bot*",
     keyboard: [
-      ["ℹ️ Help", "📊 Позиции"],
+      ["📋 Команды", "📊 Позиции"],
       ["👤 Аккаунт", "📝 Создание"],
       ["💰 Баланс"],
       ["🚨 Сигналы", "⚙️ Настройки"]
