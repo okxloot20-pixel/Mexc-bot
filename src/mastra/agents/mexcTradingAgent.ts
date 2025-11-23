@@ -555,23 +555,73 @@ U_ID: ${uId.substring(0, 30)}...
       });
       
       if (accounts.length === 0) {
-        return `📊 *Ваши аккаунты*
+        return `📊 Ваши аккаунты
 
 Нет зарегистрированных аккаунтов.
 Используйте /register для добавления`;
       }
       
-      let response = `📊 *Ваши аккаунты*\n\n`;
+      let text = `📊 Ваши аккаунты\n\n`;
+      const keyboard: any[][] = [];
+      
       accounts.forEach((acc, idx) => {
-        response += `${idx + 1}️⃣ Аккаунт #${acc.accountNumber}\n`;
-        response += `   U_ID: ${acc.uId.substring(0, 20)}...\n`;
-        if (acc.proxy) response += `   Прокси: ${acc.proxy}\n`;
-        response += `   Рычаг: ${acc.defaultLeverage}x | Размер: ${acc.defaultSize}\n\n`;
+        text += `${idx + 1}️⃣ Аккаунт #${acc.accountNumber}\n`;
+        text += `   U_ID: ${acc.uId.substring(0, 20)}...\n`;
+        if (acc.proxy) text += `   Прокси: ${acc.proxy}\n`;
+        text += `   Рычаг: ${acc.defaultLeverage}x | Размер: ${acc.defaultSize}\n\n`;
+        
+        // Add delete button for each account
+        keyboard.push([{
+          text: `🗑️ Удалить #${acc.accountNumber}`,
+          callback_data: `delete_account_${acc.id}`
+        }]);
       });
-      return response;
+      
+      return JSON.stringify({
+        type: "menu",
+        text: text,
+        keyboard: keyboard
+      });
     } catch (error: any) {
       return `❌ Ошибка при получении аккаунтов: ${error.message}`;
     }
+  }
+  
+  // Handle delete account callback
+  if (cmd.startsWith("delete_account_")) {
+    const accountId = parseInt(cmd.replace("delete_account_", ""));
+    try {
+      // Verify account belongs to user before deleting
+      const account = await db.query.mexcAccounts.findFirst({
+        where: and(
+          eq(mexcAccounts.id, accountId),
+          eq(mexcAccounts.telegramUserId, userId)
+        ),
+      });
+      
+      if (!account) {
+        return `❌ Аккаунт не найден`;
+      }
+      
+      // Delete the account
+      await db.delete(mexcAccounts).where(eq(mexcAccounts.id, accountId));
+      
+      return JSON.stringify({
+        type: "menu",
+        text: `✅ Аккаунт #${account.accountNumber} удалён`,
+        keyboard: [[{
+          text: `📋 Вернуться к аккаунтам`,
+          callback_data: `accounts`
+        }]]
+      });
+    } catch (error: any) {
+      return `❌ Ошибка при удалении: ${error.message}`;
+    }
+  }
+  
+  // Show accounts again callback
+  if (cmd === "accounts") {
+    return parseAndExecuteCommand("/accounts", userId, mastra);
   }
   
   // Open LONG limit at second ask price from orderbook (BBO) - from FUTURES API

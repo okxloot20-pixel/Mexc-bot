@@ -373,6 +373,18 @@ export const mastra = new Mastra({
                     console.log(`❌ Error in toggle callback: ${error.message}`);
                     response = `❌ Ошибка: ${error.message}`;
                   }
+                } else if (callbackData === "my_accounts") {
+                  // Show accounts list with delete buttons
+                  console.log(`📋 My accounts callback`);
+                  response = await parseAndExecuteCommand("/accounts", userId, mastra);
+                } else if (callbackData.startsWith("delete_account_")) {
+                  // Handle delete account via callback
+                  console.log(`🗑️ Delete account callback: ${callbackData}`);
+                  response = await parseAndExecuteCommand(callbackData, userId, mastra);
+                } else if (callbackData === "accounts") {
+                  // Show accounts again
+                  console.log(`📋 Back to accounts`);
+                  response = await parseAndExecuteCommand("/accounts", userId, mastra);
                 } else {
                   response = "📨 Неизвестная команда";
                 }
@@ -398,6 +410,7 @@ export const mastra = new Mastra({
                       editPayload.reply_markup = {
                         inline_keyboard: parsedResponse.keyboard
                       };
+                      delete editPayload.parse_mode;
                       console.log(`🎯 Setting inline_keyboard with ${parsedResponse.keyboard.length} rows`);
                       logger?.info("🎯 [Telegram] Setting inline_keyboard", { rows: parsedResponse.keyboard.length });
                     }
