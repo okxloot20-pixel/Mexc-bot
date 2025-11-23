@@ -1229,10 +1229,10 @@ U_ID: ${uId.substring(0, 30)}...
   // Handle menu button clicks
   if (message === "📋 Команды") {
     return JSON.stringify({
-      type: "keyboard_menu",
+      type: "menu",
       text: "📋 *Список команд*\n\n/lb SYMBOL - LONG лимит\n/sb SYMBOL - SHORT лимит\n/lm SYMBOL - LONG маркет\n/sm SYMBOL - SHORT маркет\n/close SYMBOL - Закрыть позицию\n/positions - Открытые позиции\n/balance - Баланс\n/register - Регистрация\n/accounts - Мои аккаунты",
       keyboard: [
-        ["← Назад"]
+        [{ text: "← Назад", callback_data: "back_to_main" }]
       ]
     });
   }
@@ -1340,30 +1340,30 @@ U_ID: ${uId.substring(0, 30)}...
   
   if (message === "🚨 Сигналы") {
     return JSON.stringify({
-      type: "keyboard_menu",
+      type: "menu",
       text: "🚨 *Сигналы*\n\nФункция в разработке",
       keyboard: [
-        ["← Назад"]
+        [{ text: "← Назад", callback_data: "back_to_main" }]
       ]
     });
   }
   
   if (message === "⚙️ Настройки") {
     return JSON.stringify({
-      type: "keyboard_menu",
+      type: "menu",
       text: "⚙️ *Настройки*\n\nФункция в разработке",
       keyboard: [
-        ["← Назад"]
+        [{ text: "← Назад", callback_data: "back_to_main" }]
       ]
     });
   }
   
   if (message === "🚀 Начало") {
     return JSON.stringify({
-      type: "keyboard_menu",
+      type: "menu",
       text: "📋 *Список команд*\n\n/lb SYMBOL - LONG лимит по второй цене на продажу (BBO)\n/sb SYMBOL - SHORT лимит по второй цене на покупку (BBO)\n/lm SYMBOL - LONG маркет\n/sm SYMBOL - SHORT маркет\n/sl цена SYMBOL - SHORT лимит лесенкой\n/close SYMBOL - Закрыть позицию по маркету\n/closebs SYMBOL - Закрыть SHORT по второй цене на продажу (BBO)\n/positions - Открытые позиции\n/balance - Баланс\n/register - Регистрация аккаунтов\n/accounts - Мои аккаунты",
       keyboard: [
-        ["← Назад"]
+        [{ text: "← Назад", callback_data: "back_to_main" }]
       ]
     });
   }
@@ -1373,29 +1373,11 @@ U_ID: ${uId.substring(0, 30)}...
   }
   
   if (message === "← Назад") {
-    return JSON.stringify({
-      type: "keyboard_menu",
-      text: "🤖 *Mexc Futures Trading Bot*",
-      keyboard: [
-        ["🚀 Начало", "📊 Позиции"],
-        ["👤 Аккаунт", "📝 Создание"],
-        ["💰 Баланс"],
-        ["🚨 Сигналы", "⚙️ Настройки"]
-      ]
-    });
+    return parseAndExecuteCommand("back_to_main", userId, mastra);
   }
   
   // Show menu for empty message or unknown command
-  return JSON.stringify({
-    type: "keyboard_menu",
-    text: "🤖 *Mexc Futures Trading Bot*",
-    keyboard: [
-      ["ℹ️ Help", "📊 Позиции"],
-      ["👤 Аккаунт", "📝 Создание"],
-      ["💰 Баланс"],
-      ["🚨 Сигналы", "⚙️ Настройки"]
-    ]
-  });
+  return parseAndExecuteCommand("/start", userId, mastra);
 }
 
 export const mexcTradingAgent = new Agent({
