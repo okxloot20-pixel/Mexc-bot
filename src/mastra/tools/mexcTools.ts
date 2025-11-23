@@ -137,8 +137,9 @@ export const openLongMarketTool = createTool({
 
           results.push(`✅ Аккаунт ${account.accountNumber}: LONG ${tradeSize} контрактов`);
         } catch (error: any) {
-          logger?.error(`❌ Error for account ${account.accountNumber}`, { error: error.message });
-          results.push(`❌ Аккаунт ${account.accountNumber}: ${error.message}`);
+          const errorMsg = error?.message || error?.toString?.() || JSON.stringify(error) || "Unknown error";
+          logger?.error(`❌ Error for account ${account.accountNumber}`, { error: errorMsg });
+          results.push(`❌ Аккаунт ${account.accountNumber}: ${errorMsg}`);
         }
       }
 
@@ -221,7 +222,8 @@ export const openShortMarketTool = createTool({
 
           results.push(`✅ Аккаунт ${account.accountNumber}: SHORT ${tradeSize} контрактов`);
         } catch (error: any) {
-          results.push(`❌ Аккаунт ${account.accountNumber}: ${error.message}`);
+          const errorMsg = error?.message || error?.toString?.() || JSON.stringify(error) || "Unknown error";
+          results.push(`❌ Аккаунт ${account.accountNumber}: ${errorMsg}`);
         }
       }
 
@@ -301,8 +303,9 @@ export const openLongLimitTool = createTool({
           });
           results.push(`✅ Аккаунт ${account.accountNumber}: LONG лимит ${context.price}, ${tradeSize} контрактов`);
         } catch (error: any) {
-          logger?.error(`❌ Error submitting LONG limit order for account ${account.accountNumber}`, { error: error.message });
-          results.push(`❌ Аккаунт ${account.accountNumber}: ${error.message}`);
+          const errorMsg = error?.message || error?.toString?.() || JSON.stringify(error) || "Unknown error";
+          logger?.error(`❌ Error submitting LONG limit order for account ${account.accountNumber}`, { error: errorMsg });
+          results.push(`❌ Аккаунт ${account.accountNumber}: ${errorMsg}`);
         }
       }
 
@@ -384,8 +387,9 @@ export const openShortLimitTool = createTool({
           });
           results.push(`✅ Аккаунт ${account.accountNumber}: SHORT лимит ${context.price}, ${tradeSize} контрактов`);
         } catch (error: any) {
-          logger?.error(`❌ Error submitting SHORT limit order for account ${account.accountNumber}`, { error: error.message });
-          results.push(`❌ Аккаунт ${account.accountNumber}: ${error.message}`);
+          const errorMsg = error?.message || error?.toString?.() || JSON.stringify(error) || "Unknown error";
+          logger?.error(`❌ Error submitting SHORT limit order for account ${account.accountNumber}`, { error: errorMsg });
+          results.push(`❌ Аккаунт ${account.accountNumber}: ${errorMsg}`);
         }
       }
 
