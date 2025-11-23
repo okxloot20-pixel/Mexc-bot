@@ -664,14 +664,17 @@ U_ID: ${uId.substring(0, 30)}...
             text: `🟢 /sm ${coin}`,
             callback_data: `fast_cmd_${idx}`
           }]);
-          keyboard.push([{
-            text: `🗑️ Удалить ${coin}`,
-            callback_data: `delete_fast_cmd_${idx}`
-          }]);
         });
         text += `Нажми кнопку для быстрого входа SHORT\n`;
       } else {
         text += `Нет сохранённых монет\n\n`;
+      }
+      
+      if (commands.length > 0) {
+        keyboard.push([{
+          text: "🗑️ Удалить",
+          callback_data: "delete_fast_menu"
+        }]);
       }
       
       keyboard.push([{
@@ -786,8 +789,57 @@ U_ID: ${uId.substring(0, 30)}...
     return `✏️ Отправь монету которую хочешь добавить:\n\n/fast add artx`;
   }
   
-  if (cmd.startsWith("delete_fast_cmd_")) {
-    const indexStr = cmd.replace("delete_fast_cmd_", "");
+  if (cmd === "delete_fast_menu") {
+    try {
+      const result = await db
+        .select()
+        .from(fastCommands)
+        .where(eq(fastCommands.telegramUserId, userId))
+        .limit(1);
+      
+      const existing = result[0];
+      if (!existing) {
+        return `❌ Команды не найдены`;
+      }
+      
+      let coins: string[] = [];
+      try {
+        coins = JSON.parse(existing.commands || "[]");
+      } catch (e) {
+        coins = [];
+      }
+      
+      if (coins.length === 0) {
+        return `❌ Нет монет для удаления`;
+      }
+      
+      let text = `🗑️ Выбери монету для удаления:\n\n`;
+      const keyboard: any[][] = [];
+      
+      coins.forEach((coin: string, idx: number) => {
+        keyboard.push([{
+          text: `❌ ${coin}`,
+          callback_data: `delete_fast_confirm_${idx}`
+        }]);
+      });
+      
+      keyboard.push([{
+        text: "← Назад",
+        callback_data: "show_fast"
+      }]);
+      
+      return JSON.stringify({
+        type: "menu",
+        text: text,
+        keyboard: keyboard
+      });
+    } catch (error: any) {
+      return `❌ Ошибка: ${error.message}`;
+    }
+  }
+  
+  if (cmd.startsWith("delete_fast_confirm_")) {
+    const indexStr = cmd.replace("delete_fast_confirm_", "");
     const index = parseInt(indexStr);
     
     try {
@@ -832,6 +884,11 @@ U_ID: ${uId.substring(0, 30)}...
     } catch (error: any) {
       return `❌ Ошибка при удалении: ${error.message}`;
     }
+  }
+  
+  // Keep old handler for backward compatibility
+  if (cmd.startsWith("delete_fast_cmd_")) {
+    return parseAndExecuteCommand(cmd.replace("delete_fast_cmd_", "delete_fast_confirm_"), userId, mastra);
   }
   
   if (cmd === "show_fast") {
