@@ -627,10 +627,13 @@ U_ID: ${uId.substring(0, 30)}...
   // Fast command - manage fast commands list
   if (cmd === "/fast" || cmd === "⚡ fast") {
     try {
-      const existing = await db.query.fastCommands.findFirst({
-        where: eq(fastCommands.telegramUserId, userId),
-      });
+      const result = await db
+        .select()
+        .from(fastCommands)
+        .where(eq(fastCommands.telegramUserId, userId))
+        .limit(1);
       
+      const existing = result[0];
       let commands: string[] = [];
       if (existing) {
         try {
@@ -680,9 +683,13 @@ U_ID: ${uId.substring(0, 30)}...
     }
     
     try {
-      let existing = await db.query.fastCommands.findFirst({
-        where: eq(fastCommands.telegramUserId, userId),
-      });
+      const result = await db
+        .select()
+        .from(fastCommands)
+        .where(eq(fastCommands.telegramUserId, userId))
+        .limit(1);
+      
+      const existing = result[0];
       
       let commands: string[] = [];
       if (existing) {
@@ -734,9 +741,13 @@ U_ID: ${uId.substring(0, 30)}...
     const index = parseInt(indexStr);
     
     try {
-      let existing = await db.query.fastCommands.findFirst({
-        where: eq(fastCommands.telegramUserId, userId),
-      });
+      const result = await db
+        .select()
+        .from(fastCommands)
+        .where(eq(fastCommands.telegramUserId, userId))
+        .limit(1);
+      
+      const existing = result[0];
       
       if (!existing) {
         return `❌ Команды не найдены`;
