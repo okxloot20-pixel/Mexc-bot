@@ -1228,7 +1228,7 @@ U_ID: ${uId.substring(0, 30)}...
   }
   
   // Cancel all orders across all symbols
-  if (cmd === "/close orders" || cmd === "close_orders") {
+  if (cmd === "/closeorders" || cmd === "closeorders") {
     const result = await executeToolDirect(cancelAllOrdersTool, {
       telegramUserId: userId,
     });
