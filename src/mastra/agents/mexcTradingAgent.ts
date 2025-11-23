@@ -1056,24 +1056,23 @@ U_ID: ${uId.substring(0, 30)}...
       logger?.info(`🔴 [SHORT Grid] Starting grid for ${symbol} at base price ${basePrice}`, { accountCount: accounts.length });
       
       // Determine precision based on basePrice
-      // If basePrice has leading zeros (0.00062), add 1 decimal place
-      // If basePrice has no leading zeros (0.022), add 2 decimal places
+      // 0.022 → 5 decimals (0.02197)
+      // 0.0856 → 5 decimals (0.08551)
+      // 0.00062 → 6 decimals (0.000619) - exception for double leading zeros
       const basePriceStr = basePrice.toString();
       const decimalIndex = basePriceStr.indexOf('.');
       let decimalPlaces = 0;
-      let hasLeadingZeros = false;
+      let hasDoubleLeadingZeros = false;
       
       if (decimalIndex !== -1) {
         const afterDecimal = basePriceStr.substring(decimalIndex + 1);
         decimalPlaces = afterDecimal.length;
-        // Check for leading zeros after decimal point
-        if (afterDecimal[0] === '0' && afterDecimal[1] === '0') {
-          hasLeadingZeros = true;
-        }
+        // Check if there are two leading zeros (0.00...)
+        hasDoubleLeadingZeros = afterDecimal[0] === '0' && afterDecimal[1] === '0';
       }
       
-      // Calculate precision: add 1 if leading zeros, add 2 if no leading zeros
-      const precision = hasLeadingZeros ? decimalPlaces + 1 : decimalPlaces + 2;
+      // Calculate precision: max 5 decimals, but +1 if has double leading zeros
+      const precision = hasDoubleLeadingZeros ? decimalPlaces + 1 : 5;
       const precisionMultiplier = Math.pow(10, precision);
       
       logger?.info(`🔧 [SHORT Grid] Precision calculation`, { 
