@@ -135,7 +135,7 @@ async function getPositionPnLForSymbol(userId: string, symbol: string): Promise<
               
               const pnlEmoji = actualPnlUsd > 0 ? "📈" : "📉";
               const sideText = (trade as any).positionType === 1 || (trade as any).side === 1 ? "LONG" : "SHORT";
-              const line = `${pnlEmoji} ${sideText}: ${actualPnlUsd > 0 ? "+" : ""}${actualPnlUsd.toFixed(2)}$ (${actualPnlPercent > 0 ? "+" : ""}${(actualPnlPercent * 100).toFixed(2)}%)`;
+              const line = `${pnlEmoji} Ак${account.accountNumber} ${sideText}: ${actualPnlUsd > 0 ? "+" : ""}${actualPnlUsd.toFixed(2)}$ (${actualPnlPercent > 0 ? "+" : ""}${(actualPnlPercent * 100).toFixed(2)}%)`;
               
               logger?.info(`📊 Adding PnL line: ${line}`);
               pnlLines.push(line);
