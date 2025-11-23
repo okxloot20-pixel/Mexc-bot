@@ -280,41 +280,6 @@ async function getBestAskPrice(symbol: string): Promise<number | null> {
   }
 }
 
-// Helper: Get second ask price from MEXC orderbook (for closing SHORT positions) - returns STRING to preserve precision
-async function getSecondAskPrice(symbol: string): Promise<string | null> {
-  try {
-    const logger = globalMastra?.getLogger();
-    logger?.info(`📊 Fetching second ask price (second SELL price) for ${symbol}`);
-    
-    // Use correct MEXC API endpoint for depth/orderbook
-    const response = await fetch(`https://api.mexc.com/api/v3/depth?symbol=${symbol}&limit=10`);
-    const data = await response.json();
-    
-    logger?.info(`📊 Full orderbook response:`, JSON.stringify({ bidsLength: data.bids?.length, asksLength: data.asks?.length }));
-    logger?.info(`📊 All bids: ${JSON.stringify(data.bids?.slice(0, 10))}`);
-    logger?.info(`📊 All asks: ${JSON.stringify(data.asks?.slice(0, 10))}`);
-    
-    // Check if response has asks array with at least 2 elements
-    if (Array.isArray(data.asks) && data.asks.length > 1) {
-      // Second element is second best ask (asks[1])
-      // Keep as STRING to preserve precision for MEXC API
-      const secondAskRaw = data.asks[1][0];
-      const secondAskNumeric = parseFloat(secondAskRaw);
-      logger?.info(`💰 Second ask found at asks[1] (RAW STRING): "${secondAskRaw}"`);
-      logger?.info(`💰 Second ask (numeric): ${secondAskNumeric}`);
-      logger?.info(`🔍 DEBUG asks[0]="${data.asks[0][0]}", asks[1]="${data.asks[1][0]}"`);
-      return secondAskRaw; // Return STRING not number
-    }
-    
-    logger?.error(`❌ Not enough asks in API response for ${symbol}`);
-    return null;
-  } catch (error: any) {
-    const logger = globalMastra?.getLogger();
-    logger?.error(`❌ Error getting second ask price for ${symbol}`, { error: error.message });
-    return null;
-  }
-}
-
 // Helper: Get fourth ask price from MEXC orderbook (for LONG limit) - returns STRING to preserve precision
 async function getFourthAskPrice(symbol: string): Promise<string | null> {
   try {
