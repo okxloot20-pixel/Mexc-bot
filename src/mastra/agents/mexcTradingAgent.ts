@@ -1463,13 +1463,7 @@ U_ID: ${uId.substring(0, 30)}...
   }
   
   if (message === "🚀 Начало") {
-    return JSON.stringify({
-      type: "keyboard_menu",
-      text: "📋 *Список команд*\n\n/lb SYMBOL - LONG лимит по второй цене на продажу (BBO)\n/sb SYMBOL - SHORT лимит по второй цене на покупку (BBO)\n/lm SYMBOL - LONG маркет\n/sm SYMBOL - SHORT маркет\n/sl цена SYMBOL - SHORT лимит лесенкой\n/close SYMBOL - Закрыть позицию по маркету\n/closebs SYMBOL - Закрыть SHORT по второй цене на продажу (BBO)\n/positions - Открытые позиции\n/balance - Баланс\n/register - Регистрация аккаунтов\n/accounts - Мои аккаунты",
-      keyboard: [
-        ["← Назад"]
-      ]
-    });
+    return await parseAndExecuteCommand("/start", userId, mastra);
   }
   
   if (message === "📝 Создание") {
