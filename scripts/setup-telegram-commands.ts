@@ -15,14 +15,6 @@ const commands = [
     description: "Начать работу с ботом",
   },
   {
-    command: "register",
-    description: "Регистрация аккаунтов",
-  },
-  {
-    command: "accounts",
-    description: "Мои аккаунты",
-  },
-  {
     command: "lb",
     description: "LONG лимит по второй цене на продажу (BBO)",
   },
@@ -39,8 +31,8 @@ const commands = [
     description: "SHORT маркет",
   },
   {
-    command: "close",
-    description: "Закрыть позицию по маркету",
+    command: "sl",
+    description: "SHORT лимит лесенкой",
   },
   {
     command: "closebs",
@@ -53,6 +45,14 @@ const commands = [
   {
     command: "balance",
     description: "Баланс",
+  },
+  {
+    command: "register",
+    description: "Регистрация аккаунтов",
+  },
+  {
+    command: "accounts",
+    description: "Мои аккаунты",
   },
 ];
 
