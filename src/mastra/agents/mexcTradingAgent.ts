@@ -1055,24 +1055,29 @@ U_ID: ${uId.substring(0, 30)}...
       const logger = globalMastra?.getLogger();
       logger?.info(`🔴 [SHORT Grid] Starting grid for ${symbol} at base price ${basePrice}`, { accountCount: accounts.length });
       
-      // Determine precision based on basePrice
-      // 0.022 → 5 decimals (0.02197)
-      // 0.0856 → 5 decimals (0.08551)
-      // 0.00062 → 6 decimals (0.000619) - exception for double leading zeros
+      // Determine precision: max 4 digits after first non-zero digit
+      // Formula: precision = (position of first non-zero digit) + 4
+      // Examples:
+      // 0.022 → first non-zero at index 1 → precision = 1 + 4 = 5 (result: 0.02197)
+      // 0.0856 → first non-zero at index 1 → precision = 1 + 4 = 5 (result: 0.08551)
+      // 0.00062 → first non-zero at index 2 → precision = 2 + 4 = 6 (result: 0.000619)
       const basePriceStr = basePrice.toString();
       const decimalIndex = basePriceStr.indexOf('.');
-      let decimalPlaces = 0;
-      let hasDoubleLeadingZeros = false;
+      let precision = 5; // default
       
       if (decimalIndex !== -1) {
         const afterDecimal = basePriceStr.substring(decimalIndex + 1);
-        decimalPlaces = afterDecimal.length;
-        // Check if there are two leading zeros (0.00...)
-        hasDoubleLeadingZeros = afterDecimal[0] === '0' && afterDecimal[1] === '0';
+        // Find index of first non-zero digit
+        let firstNonZeroIdx = 0;
+        for (let j = 0; j < afterDecimal.length; j++) {
+          if (afterDecimal[j] !== '0') {
+            firstNonZeroIdx = j;
+            break;
+          }
+        }
+        precision = firstNonZeroIdx + 4;
       }
       
-      // Calculate precision: max 5 decimals, but +1 if has double leading zeros
-      const precision = hasDoubleLeadingZeros ? decimalPlaces + 1 : 5;
       const precisionMultiplier = Math.pow(10, precision);
       
       logger?.info(`🔧 [SHORT Grid] Precision calculation`, { 
