@@ -502,16 +502,21 @@ export async function parseAndExecuteCommand(message: string, userId: string, ma
       // Just /register - show help
       return `📝 Регистрация аккаунта MEXC
 
-1️⃣ Открой MEXC в браузере: https://contract.mexc.com
+1️⃣ Открой MEXC в браузере: https://www.mexc.com/ru-RU/futures/BTC_USDT
 2️⃣ Открой DevTools (F12) → Application → Cookies
 3️⃣ Найди cookie с именем u_id 
-4️⃣ Скопируй её VALUE (не имя!) - это будет строка вроде: WEB06040d90
+4️⃣ Скопируй u_id (не имя!) - это будет строка вроде: WEB06040d90
 
 Отправь данные в формате:
-/register ACCOUNT_NUM U_ID [PROXY]
+/register ACCOUNTNUM UID [PROXY]
 
 Пример:
 /register 474 WEB06040d90 http://156.246.187.73:63148
+
+где: 
+474 - номер акаунта
+WEB06040d90 - u_id
+http://156.246.187.73:63148 - прокси
 
 ✅ u_id не истекает`;
     } else {
