@@ -16,6 +16,7 @@ import {
   getBalanceTool,
   getOrdersTool,
   cancelOrdersTool,
+  cancelAllOrdersTool,
 } from "../tools/mexcTools";
 import {
   registerAccountTool,
@@ -1226,7 +1227,15 @@ U_ID: ${uId.substring(0, 30)}...
     return result;
   }
   
-  // Cancel order
+  // Cancel all orders across all symbols
+  if (cmd === "/close orders" || cmd === "close_orders") {
+    const result = await executeToolDirect(cancelAllOrdersTool, {
+      telegramUserId: userId,
+    });
+    return result;
+  }
+  
+  // Cancel order for specific symbol
   if (cmd.startsWith("/cancel") || cmd.startsWith("/c ")) {
     const symbol = message.trim().split(/\s+/)[1];
     if (symbol) {

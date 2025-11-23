@@ -812,6 +812,102 @@ export const cancelOrdersTool = createTool({
 });
 
 /**
+ * Tool: Cancel All Orders (across all symbols)
+ */
+export const cancelAllOrdersTool = createTool({
+  id: "cancel-all-orders",
+  description: "Cancel all open limit orders across all symbols on all active accounts",
+  inputSchema: z.object({
+    telegramUserId: z.string(),
+  }),
+  outputSchema: z.object({
+    success: z.boolean(),
+    message: z.string(),
+  }),
+  execute: async ({ context, mastra }) => {
+    const logger = mastra?.getLogger();
+    logger?.info('🗑️ [cancelAllOrdersTool] Cancelling all orders', context);
+
+    try {
+      const accounts = await db.query.mexcAccounts.findMany({
+        where: and(
+          eq(mexcAccounts.telegramUserId, context.telegramUserId),
+          eq(mexcAccounts.isActive, true)
+        ),
+      });
+
+      if (accounts.length === 0) {
+        return { success: false, message: "❌ Нет активных аккаунтов" };
+      }
+
+      const results: string[] = [];
+      const cancelledByAccount: { [key: string]: string[] } = {};
+
+      for (const account of accounts) {
+        try {
+          const client = createMexcClient(account.uId);
+          logger?.info(`🔍 Getting all open orders for account ${account.accountNumber}`);
+          
+          // Get all open orders without symbol filter
+          const orders = await client.getOpenOrders({} as any);
+          
+          if (!orders || Object.keys(orders).length === 0) {
+            results.push(`👤 Аккаунт ${account.accountNumber}: нет открытых ордеров`);
+            continue;
+          }
+
+          // Collect all symbols with orders
+          const symbolsWithOrders: string[] = [];
+          for (const [key, orderList] of Object.entries(orders)) {
+            if (Array.isArray(orderList) && orderList.length > 0) {
+              symbolsWithOrders.push(key);
+            }
+          }
+
+          if (symbolsWithOrders.length === 0) {
+            results.push(`👤 Аккаунт ${account.accountNumber}: нет открытых ордеров`);
+            continue;
+          }
+
+          cancelledByAccount[account.accountNumber] = [];
+          let cancelledCount = 0;
+
+          // Cancel orders for each symbol
+          for (const symbol of symbolsWithOrders) {
+            try {
+              logger?.info(`❌ Cancelling orders for ${symbol}`);
+              await client.cancelOrder({ symbol } as any);
+              cancelledByAccount[account.accountNumber].push(symbol);
+              cancelledCount++;
+            } catch (error: any) {
+              logger?.warn(`⚠️ Error cancelling ${symbol}:`, { error: error.message });
+            }
+          }
+
+          if (cancelledCount > 0) {
+            results.push(`✅ Аккаунт ${account.accountNumber}: отменено ${cancelledCount} ордеров (${cancelledByAccount[account.accountNumber].join(", ")})`);
+          } else {
+            results.push(`⚠️ Аккаунт ${account.accountNumber}: не удалось отменить ордера`);
+          }
+        } catch (error: any) {
+          logger?.error(`❌ Error for account ${account.accountNumber}:`, { error: error.message });
+          results.push(`❌ Аккаунт ${account.accountNumber}: ${error.message}`);
+        }
+      }
+
+      const hasSuccess = results.some(r => r.includes("✅"));
+      return { 
+        success: hasSuccess, 
+        message: results.join("\n") 
+      };
+    } catch (error: any) {
+      logger?.error('🗑️ [cancelAllOrdersTool] Error:', { error: error.message });
+      return { success: false, message: `Ошибка: ${error.message}` };
+    }
+  },
+});
+
+/**
  * Tool: Close SHORT Position at Specific Price (Limit Order)
  */
 export const closeShortAtPriceTool = createTool({
