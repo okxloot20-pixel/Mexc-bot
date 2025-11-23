@@ -682,11 +682,6 @@ U_ID: ${uId.substring(0, 30)}...
         callback_data: "add_coin"
       }]);
       
-      keyboard.push([{
-        text: "← Назад",
-        callback_data: "back_to_main"
-      }]);
-      
       return JSON.stringify({
         type: "menu",
         text: text,
