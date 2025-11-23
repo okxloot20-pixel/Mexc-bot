@@ -654,25 +654,13 @@ U_ID: ${uId.substring(0, 30)}...
         const index = i;
         
         try {
-          // For very small prices (< 0.001 = 3+ zeros after decimal), use fixed price for all accounts
-          // For normal prices, use progressive discount (grid/лесенка)
-          let discountFactor: number;
-          let accountPrice: number;
-          
-          if (basePrice < 0.001) {
-            // Small prices: fixed price for all accounts (no discount)
-            discountFactor = 1;
-            accountPrice = basePrice;
-            logger?.info(`📍 Small price detected (${basePrice} < 0.001) - using FIXED price for all accounts`);
-          } else {
-            // Normal prices: progressive discount grid
-            // Account 1 (index 0): basePrice * 1 = basePrice
-            // Account 2 (index 1): basePrice * 0.999 (-0.1%)
-            // Account 3 (index 2): basePrice * 0.998 (-0.2%)
-            // etc.
-            discountFactor = 1 - (0.001 * index);
-            accountPrice = basePrice * discountFactor;
-          }
+          // Price formula: basePrice * (1 - 0.001 * index)
+          // Account 1 (index 0): basePrice * 1 = basePrice
+          // Account 2 (index 1): basePrice * 0.999 (-0.1%)
+          // Account 3 (index 2): basePrice * 0.998 (-0.2%)
+          // etc.
+          const discountFactor = 1 - (0.001 * index);
+          let accountPrice = basePrice * discountFactor;
           
           // Round to 8 decimal places to avoid floating point precision issues
           // e.g., 0.0002146 * 0.999 = 0.00021438540000000002 (bad) → 0.00021439 (good)
