@@ -568,7 +568,7 @@ export const getPositionsTool = createTool({
       }
 
       const results: string[] = [];
-      results.push("📊 *Открытые позиции:*\n");
+      results.push("📊 Открытые позиции:\n");
 
       for (const account of accounts) {
         try {
