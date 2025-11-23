@@ -939,7 +939,7 @@ U_ID: ${uId.substring(0, 30)}...
         keyboard: [
           ...accounts.map((acc) => {
             const status = acc.isActive ? "✅" : "❌";
-            return `${status} ${acc.accountNumber}`;
+            return [`${status} ${acc.accountNumber}`];
           }),
           ["← Назад"]
         ]
@@ -994,7 +994,7 @@ U_ID: ${uId.substring(0, 30)}...
         keyboard: [
           ...accounts.map((acc) => {
             const status = acc.isActive ? "✅" : "❌";
-            return `${status} ${acc.accountNumber}`;
+            return [`${status} ${acc.accountNumber}`];
           }),
           ["← Назад"]
         ]
