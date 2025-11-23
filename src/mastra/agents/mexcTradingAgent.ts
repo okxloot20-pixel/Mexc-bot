@@ -529,16 +529,20 @@ export async function parseAndExecuteCommand(message: string, userId: string, ma
       text: helpText,
       keyboard: [
         [
-          { text: "📈 Трейдинг", callback_data: "trading" },
+          { text: "🚀 Начало", callback_data: "start" },
           { text: "📊 Позиции", callback_data: "positions" }
         ],
         [
-          { text: "💰 Баланс", callback_data: "balance" },
+          { text: "👤 Аккаунт", callback_data: "account" },
           { text: "📦 Ордеры", callback_data: "orders" }
         ],
         [
-          { text: "👤 Аккаунты", callback_data: "account" },
+          { text: "💰 Баланс", callback_data: "balance" },
           { text: "⚡ Fast", callback_data: "fast" }
+        ],
+        [
+          { text: "🚨 Сигналы", callback_data: "signals" },
+          { text: "⚙️ Настройки", callback_data: "settings" }
         ]
       ]
     });
