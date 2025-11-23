@@ -627,13 +627,64 @@ U_ID: ${uId.substring(0, 30)}...
       size,
     });
     
-    // Wait a moment for order to execute
-    await new Promise(resolve => setTimeout(resolve, 500));
+    // Wait for limit order to execute (can take up to 60 seconds)
+    // Poll positions until closed or timeout
+    const logger = globalMastra?.getLogger();
+    const maxWaitTime = 90000; // 90 seconds max
+    const pollInterval = 2000; // Check every 2 seconds
+    const startTime = Date.now();
+    let positionClosed = false;
+    
+    while (Date.now() - startTime < maxWaitTime) {
+      try {
+        const accounts = await db.query.mexcAccounts.findMany({
+          where: and(
+            eq(mexcAccounts.telegramUserId, userId),
+            eq(mexcAccounts.isActive, true)
+          ),
+        });
+        
+        // Check if position still exists
+        let positionFound = false;
+        for (const account of accounts) {
+          const { MexcFuturesClient } = await import("@max89701/mexc-futures-sdk");
+          const client = new MexcFuturesClient({
+            authToken: account.uId,
+            logLevel: "INFO"
+          });
+          
+          const posResponse = await client.getOpenPositions("");
+          const allPositions = Array.isArray(posResponse) ? posResponse : (posResponse as any)?.data || [];
+          const hasPosition = allPositions.some((p: any) => p.symbol === apiSymbol);
+          
+          if (hasPosition) {
+            positionFound = true;
+            break;
+          }
+        }
+        
+        if (!positionFound) {
+          positionClosed = true;
+          logger?.info(`✅ Position closed after ${Date.now() - startTime}ms`);
+          break;
+        }
+        
+        // Wait before next check
+        await new Promise(resolve => setTimeout(resolve, pollInterval));
+      } catch (error: any) {
+        logger?.warn(`⚠️ Error checking position status`, { error: error.message });
+        break;
+      }
+    }
     
     // Get PnL AFTER closing
     const pnlInfo = await getPositionPnLForSymbol(userId, symbol);
     
-    return `✅ *SHORT закрыта по 10th ask ${tenthAskPrice}*${pnlInfo}\n\n${result}`;
+    if (positionClosed) {
+      return `✅ *SHORT закрыта по 10th ask ${tenthAskPrice}*${pnlInfo}\n\n${result}`;
+    } else {
+      return `⏳ *Лимит-ордер выставлен по 10th ask ${tenthAskPrice}*\nПозиция может закрыться до 1 минуты\n\n${result}`;
+    }
   }
   
   // Close position
