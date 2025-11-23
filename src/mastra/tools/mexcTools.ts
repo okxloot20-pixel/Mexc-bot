@@ -799,25 +799,23 @@ export const cancelOrdersTool = createTool({
           const client = createMexcClient(account.uId);
           logger?.info(`🎯 Getting orders for ${symbol} on account ${account.accountNumber}`);
           
-          // Get orders for the symbol
-          const orders = await client.getOpenOrders({ symbol } as any);
+          // Get orders for the symbol - response is { success, code, data }
+          const response = await client.getOpenOrders({ symbol } as any);
           
-          if (!orders || Object.keys(orders).length === 0) {
-            results.push(`⚠️ Аккаунт ${account.accountNumber}: нет ордеров по ${context.symbol}`);
-            continue;
+          logger?.info(`📋 API Response structure:`, { 
+            responseKeys: response ? Object.keys(response) : 'null'
+          });
+          
+          // Extract data array from response
+          let ordersList: any[] = [];
+          if (response && (response as any).data && Array.isArray((response as any).data)) {
+            ordersList = (response as any).data;
           }
           
-          logger?.info(`📋 Found orders:`, { ordersKeys: Object.keys(orders) });
+          // Filter to only match requested symbol (just in case API returns multiple)
+          ordersList = ordersList.filter((o: any) => o.symbol === symbol);
           
-          // Extract orders list
-          const ordersList: any[] = [];
-          for (const [key, orderList] of Object.entries(orders)) {
-            if (Array.isArray(orderList)) {
-              ordersList.push(...orderList);
-            }
-          }
-          
-          logger?.info(`📝 Total orders for symbol: ${ordersList.length}`);
+          logger?.info(`📝 Total orders for symbol ${symbol}: ${ordersList.length}`);
           
           if (ordersList.length === 0) {
             results.push(`⚠️ Аккаунт ${account.accountNumber}: нет ордеров по ${context.symbol}`);
