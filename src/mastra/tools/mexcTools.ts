@@ -856,40 +856,42 @@ export const cancelAllOrdersTool = createTool({
             continue;
           }
 
-          // DEBUG: Show FULL order structure
-          logger?.info(`📊 DEBUG: Full orders object:`, { ordersObj: JSON.stringify(orders) });
-          
+          // Build list from raw API response
           const allOrdersList: any[] = [];
           for (const [key, orderList] of Object.entries(orders)) {
             if (Array.isArray(orderList)) {
-              for (const order of orderList) {
-                logger?.info(`📋 DEBUG: Full order for ${key}:`, { order: JSON.stringify(order) });
-                allOrdersList.push({
-                  symbol: key,
-                  fullOrder: order
-                });
-              }
+              allOrdersList.push(...orderList.map((o: any) => ({
+                symbol: key,
+                ...o
+              })));
             }
           }
           
-          results.push(`📊 DEBUG Аккаунт ${account.accountNumber}: найдено ${allOrdersList.length} ордеров\n${
-            allOrdersList.map((o: any) => `${o.symbol}:\n${JSON.stringify(o.fullOrder)}`).join("\n")
-          }`);
-
-          // Filter: LIMIT/LIMIT_MAKER + NEW/PARTIALLY_FILLED
-          const ordersToCancel = allOrdersList.filter((o: any) =>
-            (o.type === "LIMIT" || o.type === "LIMIT_MAKER" || o.type === 1 || o.type === 2) &&
-            (o.status === "NEW" || o.status === "PARTIALLY_FILLED" || o.status === 1 || o.status === 2)
-          );
+          // Log raw structure
+          if (allOrdersList.length > 0) {
+            logger?.info(`🔍 RAW ORDER STRUCTURE:`, { 
+              firstOrder: JSON.stringify(allOrdersList[0], null, 2)
+            });
+          }
           
-          logger?.info(`🔍 DEBUG /co account ${account.accountNumber}: к отмене ${ordersToCancel.length} ордеров`);
-          results.push(`📋 DEBUG: к отмене ${ordersToCancel.length} ордеров`);
+          // Use SAME properties as /orders displays
+          results.push(`📝 DEBUG ${account.accountNumber}: найдено ${allOrdersList.length} ордеров`);
+          const debugList = allOrdersList.map((o: any) => {
+            const side = o.side === 1 ? "LONG" : "SHORT";
+            return `${o.symbol}: ${side} | ${o.price}`;
+          });
+          results.push(debugList.join("\n"));
+
+          // Filter: matching /orders display pattern
+          const ordersToCancel = allOrdersList;
+          
+          logger?.info(`✅ Will cancel ${ordersToCancel.length} orders`);
 
           if (ordersToCancel.length === 0) {
             continue;
           }
 
-          // Cancel by symbol
+          // Cancel by symbol like we did before
           const symbolsToCancel = [...new Set(ordersToCancel.map(o => o.symbol))];
           let cancelledCount = 0;
 
@@ -904,7 +906,7 @@ export const cancelAllOrdersTool = createTool({
           }
 
           if (cancelledCount > 0) {
-            results.push(`✅ Аккаунт ${account.accountNumber}: отменено ${ordersToCancel.length} ордеров`);
+            results.push(`✅ Аккаунт ${account.accountNumber}: отменено ${ordersToCancel.length} ордеров по символам: ${symbolsToCancel.join(", ")}`);
           }
         } catch (error: any) {
           logger?.error(`❌ Error for account ${account.accountNumber}:`, { error: error.message });
