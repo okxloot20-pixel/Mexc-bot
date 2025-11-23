@@ -840,7 +840,7 @@ U_ID: ${uId.substring(0, 30)}...
     }
   }
   
-  // Close position
+  // Close position (Market)
   if (cmd.startsWith("/close")) {
     const parts = message.trim().split(/\s+/);
     const symbol = parts[1] ? parts[1].toUpperCase() : "BTC";
@@ -851,7 +851,11 @@ U_ID: ${uId.substring(0, 30)}...
       symbol,
       size,
     });
-    return `🧹 *Позиция закрывается*\n\n${result}`;
+    
+    // Get PnL after closing
+    const pnlInfo = await getPositionPnLForSymbol(userId, symbol);
+    
+    return `✅ *Позиция закрыта по рынку*${pnlInfo}\n\n${result}`;
   }
   
   // Close LONG market
