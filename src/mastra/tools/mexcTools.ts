@@ -867,12 +867,19 @@ export const cancelAllOrdersTool = createTool({
               const orderStatus = (order as any).status || (order as any).orderStatus;
               const orderId = (order as any).orderId || (order as any).id;
               
-              logger?.info(`📋 Order check for ${symbol}:`, { type: orderType, status: orderStatus });
+              logger?.info(`📋 Order check for ${symbol}:`, { 
+                type: orderType, 
+                status: orderStatus,
+                orderId,
+                fullOrder: JSON.stringify(order)
+              });
               
-              // Filter: LIMIT/LIMIT_MAKER + NEW/PARTIALLY_FILLED (entry orders only)
-              if ((orderType === "LIMIT" || orderType === "LIMIT_MAKER") && 
-                  (orderStatus === "NEW" || orderStatus === "PARTIALLY_FILLED") &&
-                  orderId) {
+              // Filter: LIMIT (types: "LIMIT", "LIMIT_MAKER", 1, 2) + NEW/PARTIALLY_FILLED (entry orders only)
+              // Type 1 = LIMIT, Type 2 = LIMIT_MAKER
+              const isLimitType = orderType === "LIMIT" || orderType === "LIMIT_MAKER" || orderType === 1 || orderType === 2;
+              const isNewStatus = orderStatus === "NEW" || orderStatus === "PARTIALLY_FILLED" || orderStatus === 1 || orderStatus === 2;
+              
+              if (isLimitType && isNewStatus && orderId) {
                 ordersToCancel.push({ symbol, orderId });
               }
             }
