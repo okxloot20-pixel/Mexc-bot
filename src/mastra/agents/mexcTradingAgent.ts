@@ -394,6 +394,39 @@ async function getSeventhAskPrice(symbol: string): Promise<string | null> {
   }
 }
 
+// Helper: Get tenth ask price from MEXC orderbook (for closing SHORT) - returns STRING to preserve precision
+async function getTenthAskPrice(symbol: string): Promise<string | null> {
+  try {
+    const logger = globalMastra?.getLogger();
+    logger?.info(`📊 Fetching tenth ask price (10th SELL price) for ${symbol}`);
+    
+    // Use correct MEXC API endpoint for depth/orderbook
+    const response = await fetch(`https://api.mexc.com/api/v3/depth?symbol=${symbol}&limit=20`);
+    const data = await response.json();
+    
+    logger?.info(`📊 Full orderbook response:`, JSON.stringify({ bidsLength: data.bids?.length, asksLength: data.asks?.length }));
+    logger?.info(`📊 All asks: ${JSON.stringify(data.asks?.slice(0, 15))}`);
+    
+    // Check if response has asks array with at least 10 elements
+    if (Array.isArray(data.asks) && data.asks.length > 9) {
+      // Tenth element is tenth best ask (asks[9])
+      // Keep as STRING to preserve precision for MEXC API
+      const tenthAskRaw = data.asks[9][0];
+      const tenthAskNumeric = parseFloat(tenthAskRaw);
+      logger?.info(`💰 Tenth ask found at asks[9] (RAW STRING): "${tenthAskRaw}"`);
+      logger?.info(`💰 Tenth ask (numeric): ${tenthAskNumeric}`);
+      return tenthAskRaw; // Return STRING not number
+    }
+    
+    logger?.error(`❌ Not enough asks in API response for ${symbol}`);
+    return null;
+  } catch (error: any) {
+    const logger = globalMastra?.getLogger();
+    logger?.error(`❌ Error getting tenth ask price for ${symbol}`, { error: error.message });
+    return null;
+  }
+}
+
 // Simple command parser - no LLM needed for basic testing
 export async function parseAndExecuteCommand(message: string, userId: string, mastra?: any): Promise<string> {
   if (mastra) {
@@ -572,17 +605,17 @@ U_ID: ${uId.substring(0, 30)}...
     return `✅ *SHORT лимит по 2nd bid ${secondBidPrice}*\n\n${result}`;
   }
   
-  // Close SHORT limit at seventh ask price from orderbook
+  // Close SHORT limit at tenth ask price from orderbook
   if (cmd.startsWith("/closebs")) {
     const parts = message.trim().split(/\s+/);
     const symbol = parts[1] ? parts[1].toUpperCase() : "BTC";
     const size = parts[2] ? parseInt(parts[2]) : undefined;
     
-    // Get seventh ask price from orderbook (API requires format without underscore)
+    // Get tenth ask price from orderbook (API requires format without underscore)
     const apiSymbol = `${symbol}USDT`;
-    const seventhAskPrice = await getSeventhAskPrice(apiSymbol);
+    const tenthAskPrice = await getTenthAskPrice(apiSymbol);
     
-    if (seventhAskPrice === null) {
+    if (tenthAskPrice === null) {
       return `❌ Не удалось получить цену из стакана для ${apiSymbol}`;
     }
     
@@ -590,7 +623,7 @@ U_ID: ${uId.substring(0, 30)}...
     const result = await executeToolDirect(closeShortAtPriceTool, {
       telegramUserId: userId,
       symbol,
-      price: seventhAskPrice,
+      price: tenthAskPrice,
       size,
     });
     
@@ -600,7 +633,7 @@ U_ID: ${uId.substring(0, 30)}...
     // Get PnL AFTER closing
     const pnlInfo = await getPositionPnLForSymbol(userId, symbol);
     
-    return `✅ *SHORT закрыта по 7th ask ${seventhAskPrice}*${pnlInfo}\n\n${result}`;
+    return `✅ *SHORT закрыта по 10th ask ${tenthAskPrice}*${pnlInfo}\n\n${result}`;
   }
   
   // Close position
