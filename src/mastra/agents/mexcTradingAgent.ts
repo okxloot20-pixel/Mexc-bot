@@ -1270,12 +1270,26 @@ U_ID: ${uId.substring(0, 30)}...
         text: "📝 Твои аккаунты MEXC\n\nНажимай на кнопку, чтобы включить / выключать аккаунт.\nВсе торговые команды выполняются на активных аккаунтах.",
         keyboard: [
           buttons,
-          [{ text: "← Назад", callback_data: "back_to_main" }]
+          [{ text: "← Назад", callback_data: "show_account_menu" }]
         ]
       });
     } catch (error: any) {
       return `❌ Ошибка при получении аккаунтов: ${error.message}`;
     }
+  }
+  
+  // Handle back button from accounts menu - show keyboard menu instead
+  if (cmd === "show_account_menu") {
+    return JSON.stringify({
+      type: "keyboard_menu",
+      text: "🤖 *Mexc Futures Trading Bot*",
+      keyboard: [
+        ["🚀 Начало", "📊 Позиции"],
+        ["👤 Аккаунт", "📦 Ордеры"],
+        ["💰 Баланс", "⚡ Fast"],
+        ["🚨 Сигналы", "⚙️ Настройки"]
+      ]
+    });
   }
   
   // Handle account toggle (format: "✅ 458" or "❌ 458")
@@ -1322,7 +1336,7 @@ U_ID: ${uId.substring(0, 30)}...
         text: resultMsg + "\n\n📝 Твои аккаунты MEXC\n\nНажимай на кнопку, чтобы включить / выключать аккаунт.\nВсе торговые команды выполняются на активных аккаунтах.",
         keyboard: [
           buttons,
-          [{ text: "← Назад", callback_data: "back_to_main" }]
+          [{ text: "← Назад", callback_data: "show_account_menu" }]
         ]
       });
     } catch (error: any) {
