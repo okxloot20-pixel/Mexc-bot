@@ -374,15 +374,23 @@ export const openShortLimitTool = createTool({
             logger?.info(`💡 Opening limit at max allowed size`, { tradeSize, symbolMax });
           }
           
-          // For very small prices (< 0.0001), multiply by 10 to avoid SDK precision issues
-          // Example: 0.0002176 → 0.002176 (then MEXC processes it correctly)
+          // For very small prices, multiply to avoid SDK precision issues
+          // < 0.00001: multiply by 100 (e.g., 0.000005 → 0.0005)
+          // < 0.0001: multiply by 10 (e.g., 0.00023 → 0.0023)
           let submitPrice = context.price;
           let priceMultiplied = false;
+          let multiplier = 1;
           
-          if (context.price < 0.0001 && context.price > 0) {
-            submitPrice = context.price * 10;
+          if (context.price < 0.00001 && context.price > 0) {
+            submitPrice = context.price * 100;
+            multiplier = 100;
             priceMultiplied = true;
-            logger?.info(`📍 Price multiplication: ${context.price} × 10 = ${submitPrice} (to avoid SDK issues)`);
+            logger?.info(`📍 Price multiplication: ${context.price} × 100 = ${submitPrice} (very small price)`);
+          } else if (context.price < 0.0001 && context.price > 0) {
+            submitPrice = context.price * 10;
+            multiplier = 10;
+            priceMultiplied = true;
+            logger?.info(`📍 Price multiplication: ${context.price} × ${multiplier} = ${submitPrice} (small price)`);
           }
           
           const submitPriceStr = String(submitPrice);
