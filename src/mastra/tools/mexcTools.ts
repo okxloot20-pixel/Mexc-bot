@@ -836,42 +836,35 @@ export const cancelOrdersTool = createTool({
               const orderId = (order as any).orderId;
               const externalOid = (order as any).externalOid;
               
-              logger?.info(`❌ Attempt 1: Cancelling with orderId:`, { orderId, symbol });
+              // ========== ATTEMPT 1: orderId ==========
+              const request1 = { symbol, orderId };
+              logger?.info(`📤 REQUEST 1:`, { fields: Object.keys(request1), ...request1 });
               
-              // Try with orderId first
-              let cancelRes: any = await client.cancelOrder({ 
-                symbol,
-                orderId
-              } as any);
+              let cancelRes: any = await client.cancelOrder(request1 as any);
               
-              logger?.info(`📨 Response 1:`, { 
-                success: cancelRes?.success,
-                code: cancelRes?.code
+              logger?.info(`📥 RESPONSE 1 (FULL JSON):`, { 
+                response: JSON.stringify(cancelRes, null, 2)
               });
               
               // If failed, try with externalOid
               if (cancelRes?.success !== true) {
-                logger?.info(`❌ Attempt 2: Cancelling with externalOid:`, { externalOid, symbol });
+                // ========== ATTEMPT 2: externalOid ==========
+                const request2 = { symbol, externalOid };
+                logger?.info(`📤 REQUEST 2:`, { fields: Object.keys(request2), ...request2 });
                 
-                cancelRes = await client.cancelOrder({ 
-                  symbol,
-                  externalOid
-                } as any);
+                cancelRes = await client.cancelOrder(request2 as any);
                 
-                logger?.info(`📨 Response 2:`, { 
-                  success: cancelRes?.success,
-                  code: cancelRes?.code
+                logger?.info(`📥 RESPONSE 2 (FULL JSON):`, { 
+                  response: JSON.stringify(cancelRes, null, 2)
                 });
               }
               
               if (cancelRes?.success === true) {
                 logger?.info(`✅ Order cancelled successfully!`);
                 cancelledCount++;
-              } else {
-                logger?.warn(`⚠️ Both attempts failed:`, { code: cancelRes?.code, msg: cancelRes?.message });
               }
             } catch (error: any) {
-              logger?.warn(`⚠️ Error cancelling order:`, { error: error.message });
+              logger?.error(`❌ Error cancelling order:`, { error: error.message, stack: error.stack });
             }
           }
           
