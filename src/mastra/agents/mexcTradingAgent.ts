@@ -934,9 +934,15 @@ U_ID: ${uId.substring(0, 30)}...
       });
       
       return JSON.stringify({
-        type: "menu",
+        type: "keyboard_menu",
         text: "📝 *Твои аккаунты MEXC*\n\nНажимай на кнопку, чтобы включить / выключать аккаунт.\nВсе торговые команды выполняются на активных аккаунтах.",
-        keyboard: [buttons, [{ text: "← Назад", callback_data: "back_to_main" }]]
+        keyboard: [
+          ...accounts.map((acc) => {
+            const status = acc.isActive ? "✅" : "❌";
+            return `${status} ${acc.accountNumber}`;
+          }),
+          ["← Назад"]
+        ]
       });
     } catch (error: any) {
       return `❌ Ошибка при получении аккаунтов: ${error.message}`;
@@ -983,9 +989,15 @@ U_ID: ${uId.substring(0, 30)}...
       });
       
       return JSON.stringify({
-        type: "menu",
+        type: "keyboard_menu",
         text: resultMsg + "\n\n📝 *Твои аккаунты MEXC*\n\nНажимай на кнопку, чтобы включить / выключать аккаунт.\nВсе торговые команды выполняются на активных аккаунтах.",
-        keyboard: [buttons, [{ text: "← Назад", callback_data: "back_to_main" }]]
+        keyboard: [
+          ...accounts.map((acc) => {
+            const status = acc.isActive ? "✅" : "❌";
+            return `${status} ${acc.accountNumber}`;
+          }),
+          ["← Назад"]
+        ]
       });
     } catch (error: any) {
       return `❌ Ошибка: ${error.message}`;
