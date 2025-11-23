@@ -647,21 +647,19 @@ U_ID: ${uId.substring(0, 30)}...
       const keyboard: any[][] = [];
       
       if (commands.length > 0) {
-        commands.forEach((cmd: string, idx: number) => {
-          keyboard.push([
-            {
-              text: `🟢 ${cmd}`,
-              callback_data: `fast_cmd_${idx}`
-            },
-            {
-              text: `🗑️`,
-              callback_data: `delete_fast_cmd_${idx}`
-            }
-          ]);
+        commands.forEach((coin: string, idx: number) => {
+          keyboard.push([{
+            text: `🟢 /sm ${coin}`,
+            callback_data: `fast_cmd_${idx}`
+          }]);
+          keyboard.push([{
+            text: `🗑️ Удалить ${coin}`,
+            callback_data: `delete_fast_cmd_${idx}`
+          }]);
         });
-        text += `Нажми кнопку для быстрого входа\n`;
+        text += `Нажми кнопку для быстрого входа SHORT\n`;
       } else {
-        text += `Нет сохранённых команд\n\n`;
+        text += `Нет сохранённых монет\n\n`;
       }
       
       keyboard.push([{
@@ -696,15 +694,16 @@ U_ID: ${uId.substring(0, 30)}...
         return `❌ Команды не найдены`;
       }
       
-      let commands: string[] = [];
+      let coins: string[] = [];
       try {
-        commands = JSON.parse(existing.commands || "[]");
+        coins = JSON.parse(existing.commands || "[]");
       } catch (e) {
-        commands = [];
+        coins = [];
       }
       
-      if (index >= 0 && index < commands.length) {
-        const cmdToExecute = commands[index];
+      if (index >= 0 && index < coins.length) {
+        const coin = coins[index];
+        const cmdToExecute = `/sm ${coin}`;
         return parseAndExecuteCommand(cmdToExecute, userId, mastra);
       } else {
         return `❌ Команда не найдена`;
@@ -716,8 +715,8 @@ U_ID: ${uId.substring(0, 30)}...
   
   // Handle add coin
   if (cmd.startsWith("/fast add ")) {
-    const coinToAdd = `/sm ${message.substring(9).trim().toUpperCase()}`;
-    if (!coinToAdd.replace("/sm ", "")) {
+    const coin = message.substring(9).trim().toUpperCase();
+    if (!coin) {
       return `❌ Монета не может быть пустой`;
     }
     
@@ -740,8 +739,8 @@ U_ID: ${uId.substring(0, 30)}...
       }
       
       // Add new coin if not duplicate
-      if (!coins.includes(coinToAdd)) {
-        coins.push(coinToAdd);
+      if (!coins.includes(coin)) {
+        coins.push(coin);
       }
       
       const coinsJson = JSON.stringify(coins);
@@ -759,7 +758,7 @@ U_ID: ${uId.substring(0, 30)}...
       
       return JSON.stringify({
         type: "menu",
-        text: `✅ Команда добавлена:\n\n${coinToAdd}`,
+        text: `✅ Монета добавлена:\n\n${coin}`,
         keyboard: [[{
           text: `📋 Вернуться к Fast`,
           callback_data: `show_fast`
@@ -791,32 +790,32 @@ U_ID: ${uId.substring(0, 30)}...
         return `❌ Команды не найдены`;
       }
       
-      let commands: string[] = [];
+      let coins: string[] = [];
       try {
-        commands = JSON.parse(existing.commands || "[]");
+        coins = JSON.parse(existing.commands || "[]");
       } catch (e) {
-        commands = [];
+        coins = [];
       }
       
-      if (index >= 0 && index < commands.length) {
-        const deletedCmd = commands[index];
-        commands.splice(index, 1);
+      if (index >= 0 && index < coins.length) {
+        const deletedCoin = coins[index];
+        coins.splice(index, 1);
         
-        const commandsJson = JSON.stringify(commands);
+        const coinsJson = JSON.stringify(coins);
         await db.update(fastCommands)
-          .set({ commands: commandsJson, updatedAt: new Date() })
+          .set({ commands: coinsJson, updatedAt: new Date() })
           .where(eq(fastCommands.telegramUserId, userId));
         
         return JSON.stringify({
           type: "menu",
-          text: `✅ Команда удалена:\n\n${deletedCmd}`,
+          text: `✅ Монета удалена:\n\n${deletedCoin}`,
           keyboard: [[{
             text: `📋 Вернуться к Fast`,
             callback_data: `show_fast`
           }]]
         });
       } else {
-        return `❌ Команда не найдена`;
+        return `❌ Монета не найдена`;
       }
     } catch (error: any) {
       return `❌ Ошибка при удалении: ${error.message}`;
