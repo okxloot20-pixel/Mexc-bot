@@ -684,7 +684,7 @@ U_ID: ${uId.substring(0, 30)}...
       
       keyboard.push([{
         text: "← Назад",
-        callback_data: "back_to_main"
+        callback_data: "show_fast_menu"
       }]);
       
       return JSON.stringify({
@@ -1280,6 +1280,20 @@ U_ID: ${uId.substring(0, 30)}...
   
   // Handle back button from accounts menu - show keyboard menu instead
   if (cmd === "show_account_menu") {
+    return JSON.stringify({
+      type: "keyboard_menu",
+      text: "🤖 *Mexc Futures Trading Bot*",
+      keyboard: [
+        ["🚀 Начало", "📊 Позиции"],
+        ["👤 Аккаунт", "📦 Ордеры"],
+        ["💰 Баланс", "⚡ Fast"],
+        ["🚨 Сигналы", "⚙️ Настройки"]
+      ]
+    });
+  }
+  
+  // Handle back button from fast menu - show keyboard menu instead
+  if (cmd === "show_fast_menu") {
     return JSON.stringify({
       type: "keyboard_menu",
       text: "🤖 *Mexc Futures Trading Bot*",
