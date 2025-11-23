@@ -236,12 +236,29 @@ export const mastra = new Mastra({
               // Handle callback query (button clicks)
               if (payload.callback_query) {
                 const callbackData = payload.callback_query.data;
+                const callbackQueryId = payload.callback_query.id;
                 const userId = String(payload.callback_query.from.id);
                 const chatId = payload.callback_query.message.chat.id;
                 const messageId = payload.callback_query.message.message_id;
                 
-                console.log(`🔘 Callback: "${callbackData}", UserID: ${userId}`);
-                logger?.info("🔘 [Telegram] Callback query", { callbackData, userId, chatId });
+                console.log(`🔘 CALLBACK QUERY RECEIVED: "${callbackData}", UserID: ${userId}, CallbackID: ${callbackQueryId}`);
+                logger?.info("🔘 [Telegram] Callback query RECEIVED", { callbackData, userId, chatId, callbackQueryId });
+                
+                // Acknowledge the callback query immediately
+                if (process.env.TELEGRAM_BOT_TOKEN) {
+                  const botToken = process.env.TELEGRAM_BOT_TOKEN;
+                  const answerUrl = `https://api.telegram.org/bot${botToken}/answerCallbackQuery`;
+                  console.log(`📨 Sending answerCallbackQuery for ${callbackQueryId}`);
+                  await fetch(answerUrl, {
+                    method: "POST",
+                    headers: { "Content-Type": "application/json" },
+                    body: JSON.stringify({
+                      callback_query_id: callbackQueryId,
+                      text: "Обработка...",
+                      show_alert: false
+                    }),
+                  }).catch(err => console.log("⚠️ Error answering callback:", err));
+                }
                 
                 // Generate response based on callback
                 let response = "";
