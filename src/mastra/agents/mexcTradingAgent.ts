@@ -1055,6 +1055,35 @@ U_ID: ${uId.substring(0, 30)}...
       const logger = globalMastra?.getLogger();
       logger?.info(`🔴 [SHORT Grid] Starting grid for ${symbol} at base price ${basePrice}`, { accountCount: accounts.length });
       
+      // Determine precision based on basePrice
+      // If basePrice has leading zeros (0.00062), add 1 decimal place
+      // If basePrice has no leading zeros (0.022), add 2 decimal places
+      const basePriceStr = basePrice.toString();
+      const decimalIndex = basePriceStr.indexOf('.');
+      let decimalPlaces = 0;
+      let hasLeadingZeros = false;
+      
+      if (decimalIndex !== -1) {
+        const afterDecimal = basePriceStr.substring(decimalIndex + 1);
+        decimalPlaces = afterDecimal.length;
+        // Check for leading zeros after decimal point
+        if (afterDecimal[0] === '0' && afterDecimal[1] === '0') {
+          hasLeadingZeros = true;
+        }
+      }
+      
+      // Calculate precision: add 1 if leading zeros, add 2 if no leading zeros
+      const precision = hasLeadingZeros ? decimalPlaces + 1 : decimalPlaces + 2;
+      const precisionMultiplier = Math.pow(10, precision);
+      
+      logger?.info(`🔧 [SHORT Grid] Precision calculation`, { 
+        basePrice, 
+        decimalPlaces, 
+        hasLeadingZeros, 
+        precision,
+        precisionMultiplier 
+      });
+      
       // Calculate prices for each account with progressive discount
       // Use sequential execution with delay to avoid MEXC rate limit (50ms between requests)
       const orderResults = [];
@@ -1072,20 +1101,21 @@ U_ID: ${uId.substring(0, 30)}...
           const discountFactor = 1 - (0.001 * index);
           let accountPrice = basePrice * discountFactor;
           
-          // Truncate to 6 decimal places (remove last 2 digits)
-          // e.g., 0.00061938 → 0.000619
-          accountPrice = Math.floor(accountPrice * 1000000) / 1000000;
+          // Truncate to calculated precision
+          // e.g., 0.00061938 → 0.000619 (6 decimals, leading zeros exist)
+          // e.g., 0.021977 → 0.02197 (5 decimals, no leading zeros)
+          accountPrice = Math.floor(accountPrice * precisionMultiplier) / precisionMultiplier;
           
           logger?.info(`📍 Grid order for account ${account.accountNumber}:`, { 
             index, 
             discountFactor, 
             accountPrice,
-            position: `${i + 1}/${accounts.length}`
+            position: `${i + 1}/${accounts.length}`,
+            precisionUsed: precision
           });
           
           // Execute the order on SPECIFIC account
-          // For very small prices, ensure proper formatting (6 decimal places)
-          const priceStr = accountPrice.toFixed(6);
+          const priceStr = accountPrice.toFixed(precision);
           const result = await executeToolDirect(openShortLimitTool, {
             telegramUserId: userId,
             symbol,
@@ -1097,16 +1127,16 @@ U_ID: ${uId.substring(0, 30)}...
           
           orderResults.push({
             accountNumber: account.accountNumber,
-            price: accountPrice.toFixed(6),
+            price: accountPrice.toFixed(precision),
             result
           });
         } catch (error: any) {
           logger?.error(`❌ Error placing order for account ${account.accountNumber}`, { error: error.message });
           const errorPrice = basePrice * (1 - 0.001 * index);
-          const truncatedErrorPrice = Math.floor(errorPrice * 1000000) / 1000000;
+          const truncatedErrorPrice = Math.floor(errorPrice * precisionMultiplier) / precisionMultiplier;
           orderResults.push({
             accountNumber: account.accountNumber,
-            price: truncatedErrorPrice.toFixed(6),
+            price: truncatedErrorPrice.toFixed(precision),
             result: `❌ ${error.message}`
           });
         }
