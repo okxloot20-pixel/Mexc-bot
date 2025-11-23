@@ -232,6 +232,15 @@ export const mastra = new Mastra({
               logger?.info("🔍 [Telegram] Payload keys:", Object.keys(payload));
               logger?.info("🔍 [Telegram] Has message?", !!payload.message);
               logger?.info("🔍 [Telegram] Has callback_query?", !!payload.callback_query);
+              
+              // Log what type of event this is
+              if (payload.message) {
+                console.log("📨 EVENT TYPE: MESSAGE");
+              } else if (payload.callback_query) {
+                console.log("🔘 EVENT TYPE: CALLBACK_QUERY");
+              } else {
+                console.log("❓ EVENT TYPE: UNKNOWN", Object.keys(payload));
+              }
 
               // Handle callback query (button clicks)
               if (payload.callback_query) {
