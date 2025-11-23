@@ -615,6 +615,100 @@ U_ID: ${uId.substring(0, 30)}...
     return `✅ *SHORT лимит по 2nd bid ${secondBidPrice}*\n\n${result}`;
   }
   
+  // SHORT limit grid - opens SHORT at specified price for all accounts with price ladder
+  // /sl 0.08 artx - opens SHORT at 0.08 for account 1, 0.08*0.9999 for account 2, etc.
+  if (cmd.startsWith("/sl")) {
+    const parts = message.trim().split(/\s+/);
+    const basePrice = parseFloat(parts[1]);
+    const symbol = parts[2] ? parts[2].toUpperCase() : undefined;
+    
+    if (!basePrice || !symbol || isNaN(basePrice)) {
+      return `❌ Формат: /sl ЦЕНА СИМВОЛ\nПример: /sl 0.08 artx`;
+    }
+    
+    try {
+      // Get all active accounts
+      const accounts = await db.query.mexcAccounts.findMany({
+        where: and(
+          eq(mexcAccounts.telegramUserId, userId),
+          eq(mexcAccounts.isActive, true)
+        ),
+      });
+      
+      if (accounts.length === 0) {
+        return `❌ Нет активных аккаунтов`;
+      }
+      
+      const logger = globalMastra?.getLogger();
+      logger?.info(`🔴 [SHORT Grid] Starting grid for ${symbol} at base price ${basePrice}`, { accountCount: accounts.length });
+      
+      // Calculate prices for each account with progressive discount
+      const orderPromises = accounts.map(async (account, index) => {
+        try {
+          // Price formula: basePrice * (1 - 0.0001 * index)
+          // Account 1 (index 0): basePrice * 1 = basePrice
+          // Account 2 (index 1): basePrice * 0.9999
+          // Account 3 (index 2): basePrice * 0.9998
+          // etc.
+          const discountFactor = 1 - (0.0001 * index);
+          const accountPrice = basePrice * discountFactor;
+          
+          logger?.info(`📍 Grid order for account ${account.accountNumber}:`, { 
+            index, 
+            discountFactor, 
+            accountPrice 
+          });
+          
+          // Execute the order
+          const result = await executeToolDirect(openShortLimitTool, {
+            telegramUserId: userId,
+            symbol,
+            price: accountPrice,
+            size: undefined, // Use default max size from symbol limits
+            leverage: account.defaultLeverage,
+          });
+          
+          return {
+            accountNumber: account.accountNumber,
+            price: accountPrice.toFixed(8),
+            result
+          };
+        } catch (error: any) {
+          logger?.error(`❌ Error placing order for account ${account.accountNumber}`, { error: error.message });
+          return {
+            accountNumber: account.accountNumber,
+            price: (basePrice * (1 - 0.0001 * index)).toFixed(8),
+            result: `❌ ${error.message}`
+          };
+        }
+      });
+      
+      // Wait for all orders to complete
+      const orderResults = await Promise.all(orderPromises);
+      
+      // Format response with all orders
+      let response = `🔴 *SHORT Сетка запущена*\n\n`;
+      response += `📊 Символ: ${symbol}_USDT\n`;
+      response += `💰 Базовая цена: ${basePrice}\n`;
+      response += `📈 Аккаунтов: ${accounts.length}\n\n`;
+      response += `📋 *Ордера по аккаунтам:*\n`;
+      
+      orderResults.forEach((result, idx) => {
+        const emoji = result.result.includes("❌") ? "❌" : "✅";
+        response += `${emoji} Акк #${result.accountNumber}: ${result.price}\n`;
+      });
+      
+      const successCount = orderResults.filter(r => !r.result.includes("❌")).length;
+      response += `\n✅ Успешно: ${successCount}/${accounts.length}`;
+      
+      logger?.info(`🔴 [SHORT Grid] Completed`, { successCount, totalAccounts: accounts.length });
+      
+      return response;
+    } catch (error: any) {
+      return `❌ Ошибка при создании сетки: ${error.message}`;
+    }
+  }
+  
   // Close SHORT limit at tenth ask price from orderbook
   if (cmd.startsWith("/closebs")) {
     const parts = message.trim().split(/\s+/);
