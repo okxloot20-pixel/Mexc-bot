@@ -325,6 +325,7 @@ export const openShortLimitTool = createTool({
     price: z.number(),
     size: z.number().optional(),
     leverage: z.number().optional(),
+    accountNumber: z.number().optional().describe("Specific account number to trade on (if not provided, trades on all active accounts)"),
   }),
   outputSchema: z.object({
     success: z.boolean(),
@@ -335,7 +336,7 @@ export const openShortLimitTool = createTool({
     logger?.info('🔴 [openShortLimitTool] Opening SHORT limit position', context);
 
     try {
-      const accounts = await db.query.mexcAccounts.findMany({
+      let accounts = await db.query.mexcAccounts.findMany({
         where: and(
           eq(mexcAccounts.telegramUserId, context.telegramUserId),
           eq(mexcAccounts.isActive, true)
@@ -344,6 +345,14 @@ export const openShortLimitTool = createTool({
 
       if (accounts.length === 0) {
         return { success: false, message: "❌ Нет активных аккаунтов" };
+      }
+
+      // If specific account number provided, filter to only that account
+      if (context.accountNumber !== undefined) {
+        accounts = accounts.filter(a => a.accountNumber === context.accountNumber);
+        if (accounts.length === 0) {
+          return { success: false, message: `❌ Аккаунт ${context.accountNumber} не найден или неактивен` };
+        }
       }
 
       const symbol = `${context.symbol}_USDT`;

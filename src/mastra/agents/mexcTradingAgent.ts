@@ -662,13 +662,14 @@ U_ID: ${uId.substring(0, 30)}...
             accountPrice 
           });
           
-          // Execute the order
+          // Execute the order on SPECIFIC account
           const result = await executeToolDirect(openShortLimitTool, {
             telegramUserId: userId,
             symbol,
             price: accountPrice,
             size: undefined, // Use default max size from symbol limits
             leverage: account.defaultLeverage,
+            accountNumber: account.accountNumber, // Trade on this specific account only
           });
           
           return {
