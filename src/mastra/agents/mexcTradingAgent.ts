@@ -622,8 +622,8 @@ U_ID: ${uId.substring(0, 30)}...
     const size = parts[2] ? parseInt(parts[2]) : undefined;
     const leverage = parts[3] ? parseInt(parts[3]) : undefined;
     
-    // Get second bid price from orderbook (API requires format without underscore)
-    const apiSymbol = `${symbol}USDT`;
+    // Get second bid price from orderbook (API requires format WITH underscore)
+    const apiSymbol = `${symbol}_USDT`;
     const secondBidPrice = await getSecondBidPrice(apiSymbol);
     
     if (secondBidPrice === null) {
