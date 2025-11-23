@@ -393,7 +393,7 @@ export const openShortLimitTool = createTool({
             side: 3,
             vol: tradeSize,
             type: 1,
-            price: submitPriceStr,
+            price: submitPrice,
             leverage: tradeLeverage,
             openType: 2,
           });
@@ -568,7 +568,7 @@ export const getPositionsTool = createTool({
       }
 
       const results: string[] = [];
-      results.push("📊 *Открытые позиции:*\n");
+      results.push("📊 Открытые позиции:\n");
 
       for (const account of accounts) {
         try {
@@ -585,7 +585,7 @@ export const getPositionsTool = createTool({
             continue;
           }
 
-          results.push(`👤 *Аккаунт ${account.accountNumber}:*`);
+          results.push(`👤 Аккаунт ${account.accountNumber}:`);
           for (const pos of positions) {
             // Determine side: positionType 1 = LONG, 2 = SHORT
             const sideText = (pos as any).positionType === 1 ? "🟢 LONG" : "🔴 SHORT";
