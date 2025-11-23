@@ -539,17 +539,17 @@ U_ID: ${uId.substring(0, 30)}...
     return `✅ *SHORT лимит по 2nd bid ${secondBidPrice}*\n\n${result}`;
   }
   
-  // Close SHORT limit at fourth bid price from orderbook
+  // Close SHORT limit at fourth ask price from orderbook
   if (cmd.startsWith("/closebs")) {
     const parts = message.trim().split(/\s+/);
     const symbol = parts[1] ? parts[1].toUpperCase() : "BTC";
     const size = parts[2] ? parseInt(parts[2]) : undefined;
     
-    // Get fourth bid price from orderbook (API requires format without underscore)
+    // Get fourth ask price from orderbook (API requires format without underscore)
     const apiSymbol = `${symbol}USDT`;
-    const fourthBidPrice = await getFourthBidPrice(apiSymbol);
+    const fourthAskPrice = await getFourthAskPrice(apiSymbol);
     
-    if (fourthBidPrice === null) {
+    if (fourthAskPrice === null) {
       return `❌ Не удалось получить цену из стакана для ${apiSymbol}`;
     }
     
@@ -557,7 +557,7 @@ U_ID: ${uId.substring(0, 30)}...
     const result = await executeToolDirect(closeShortAtPriceTool, {
       telegramUserId: userId,
       symbol,
-      price: fourthBidPrice,
+      price: fourthAskPrice,
       size,
     });
     
@@ -567,7 +567,7 @@ U_ID: ${uId.substring(0, 30)}...
     // Get PnL AFTER closing
     const pnlInfo = await getPositionPnLForSymbol(userId, symbol);
     
-    return `✅ *SHORT закрыта по 4th bid ${fourthBidPrice}*${pnlInfo}\n\n${result}`;
+    return `✅ *SHORT закрыта по 4th ask ${fourthAskPrice}*${pnlInfo}\n\n${result}`;
   }
   
   // Close position
