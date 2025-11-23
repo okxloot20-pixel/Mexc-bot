@@ -220,6 +220,9 @@ export const mastra = new Mastra({
         path: "/webhooks/telegram/action",
         method: "POST",
         createHandler: async () => {
+          // 🔒 PRIVATE BOT - Only allowed users can access
+          const ALLOWED_USERS = ["513426471"]; // Только твой ID
+          
           return async (c: any) => {
             const mastra = c.get("mastra");
             const logger = mastra?.getLogger();
@@ -249,6 +252,28 @@ export const mastra = new Mastra({
                 const userId = String(payload.callback_query.from.id);
                 const chatId = payload.callback_query.message.chat.id;
                 const messageId = payload.callback_query.message.message_id;
+                
+                // 🔒 Check if user is allowed
+                if (!ALLOWED_USERS.includes(userId)) {
+                  console.log(`🚫 UNAUTHORIZED ACCESS ATTEMPT: UserID ${userId} tried callback: ${callbackData}`);
+                  logger?.warn("🚫 [Telegram] Unauthorized callback attempt", { userId, callbackData });
+                  
+                  // Send alert to user
+                  if (process.env.TELEGRAM_BOT_TOKEN) {
+                    const botToken = process.env.TELEGRAM_BOT_TOKEN;
+                    const answerUrl = `https://api.telegram.org/bot${botToken}/answerCallbackQuery`;
+                    await fetch(answerUrl, {
+                      method: "POST",
+                      headers: { "Content-Type": "application/json" },
+                      body: JSON.stringify({
+                        callback_query_id: callbackQueryId,
+                        text: "🚫 Доступ запрещен",
+                        show_alert: true
+                      }),
+                    }).catch(err => console.log("⚠️ Error answering callback:", err));
+                  }
+                  return c.text("OK", 200);
+                }
                 
                 console.log(`🔘 CALLBACK QUERY RECEIVED: "${callbackData}", UserID: ${userId}, CallbackID: ${callbackQueryId}`);
                 logger?.info("🔘 [Telegram] Callback query RECEIVED", { callbackData, userId, chatId, callbackQueryId });
@@ -435,6 +460,27 @@ export const mastra = new Mastra({
               const userId = String(payload.message?.from?.id || "");
               let chatId = payload.message?.chat?.id;
               const username = payload.message?.from?.username || "unknown";
+
+              // 🔒 Check if user is allowed
+              if (!ALLOWED_USERS.includes(userId)) {
+                console.log(`🚫 UNAUTHORIZED ACCESS ATTEMPT: UserID ${userId} sent message: "${message}"`);
+                logger?.warn("🚫 [Telegram] Unauthorized message attempt", { userId, message });
+                
+                // Send error response
+                if (process.env.TELEGRAM_BOT_TOKEN && chatId) {
+                  const botToken = process.env.TELEGRAM_BOT_TOKEN;
+                  const apiUrl = `https://api.telegram.org/bot${botToken}/sendMessage`;
+                  await fetch(apiUrl, {
+                    method: "POST",
+                    headers: { "Content-Type": "application/json" },
+                    body: JSON.stringify({
+                      chat_id: chatId,
+                      text: "🚫 Доступ запрещен. Этот бот только для авторизованных пользователей."
+                    }),
+                  }).catch(err => console.log("⚠️ Error sending access denied:", err));
+                }
+                return c.text("OK", 200);
+              }
 
               console.log(`📱 Message: "${message}", ChatID: ${chatId}, UserID: ${userId}`);
               logger?.info("📱 [Telegram] Parsed message", {
