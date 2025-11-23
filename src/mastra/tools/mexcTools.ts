@@ -516,7 +516,7 @@ export const closePositionTool = createTool({
             });
 
             const pnlEmoji = pnlAfterCommission > 0 ? "📈" : "📉";
-            results.push(`✅ Аккаунт ${account.accountNumber}: закрыта позиция ${closeSize} контрактов | ${pnlEmoji} ${pnlAfterCommission > 0 ? "+" : ""}${pnlAfterCommission.toFixed(2)}$ | ${pnlPercent > 0 ? "+" : ""}${pnlPercent.toFixed(2)}%`);
+            results.push(`✅ Аккаунт ${account.accountNumber}: закрыта позиция ${closeSize} контрактов | ${pnlEmoji} ${pnlAfterCommission > 0 ? "+" : ""}${pnlAfterCommission.toFixed(2)}$ | ${pnlPercent > 0 ? "+" : ""}${pnlPercent.toFixed(2)}% | комиссия: -${closingCommission.toFixed(2)}$`);
           }
         } catch (error: any) {
           logger?.error(`❌ Error closing position for account ${account.accountNumber}`, { error: error.message });
@@ -568,7 +568,7 @@ export const getPositionsTool = createTool({
       }
 
       const results: string[] = [];
-      results.push("📊 Открытые позиции:\n");
+      results.push("📊 *Открытые позиции:*\n");
 
       for (const account of accounts) {
         try {
@@ -602,7 +602,7 @@ export const getPositionsTool = createTool({
             
             const pnlEmoji = pnlAfterCommission > 0 ? "📈" : "📉";
             
-            results.push(`${pnlEmoji} ${(pos as any).symbol} | ${sideText} ${holdVol}кт | ${pnlAfterCommission > 0 ? "+" : ""}${pnlAfterCommission.toFixed(2)}$ | ${pnlPercent > 0 ? "+" : ""}${pnlPercent.toFixed(2)}%`);
+            results.push(`${pnlEmoji} ${(pos as any).symbol} | ${sideText} ${holdVol}кт | ${pnlAfterCommission > 0 ? "+" : ""}${pnlAfterCommission.toFixed(2)}$ | ${pnlPercent > 0 ? "+" : ""}${pnlPercent.toFixed(2)}% | комиссия: -${closingCommission.toFixed(2)}$`);
           }
         } catch (error: any) {
           logger?.error(`❌ [getPositionsTool] Error fetching positions for account ${account.accountNumber}`, { error: error.message });
