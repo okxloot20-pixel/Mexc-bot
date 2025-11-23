@@ -1377,6 +1377,13 @@ U_ID: ${uId.substring(0, 30)}...
     return result;
   }
   
+  if (message === "📦 Ордеры") {
+    const result = await executeToolDirect(getOrdersTool, {
+      telegramUserId: userId,
+    });
+    return result;
+  }
+  
   if (message === "🚨 Сигналы") {
     return JSON.stringify({
       type: "keyboard_menu",
