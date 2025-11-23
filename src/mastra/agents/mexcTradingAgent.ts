@@ -699,10 +699,10 @@ U_ID: ${uId.substring(0, 30)}...
           });
         }
         
-        // Add 50ms delay between requests to avoid MEXC rate limit (except after last order)
+        // Add 200ms delay between requests to avoid MEXC rate limit and SDK issues
         if (i < accounts.length - 1) {
-          logger?.info(`⏱️ Delaying 50ms before next order...`);
-          await new Promise(resolve => setTimeout(resolve, 50));
+          logger?.info(`⏱️ Delaying 200ms before next order...`);
+          await new Promise(resolve => setTimeout(resolve, 200));
         }
       }
       
