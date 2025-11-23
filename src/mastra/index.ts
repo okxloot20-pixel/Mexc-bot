@@ -443,7 +443,6 @@ export const mastra = new Mastra({
                 let payload: any = {
                   chat_id: chatId,
                   text: response,
-                  parse_mode: "Markdown",
                 };
                 
                 try {
@@ -456,12 +455,14 @@ export const mastra = new Mastra({
                       resize_keyboard: true,
                       one_time_keyboard: false
                     };
+                    payload.parse_mode = "Markdown";
                     console.log(`✅ Using reply_keyboard`);
                   } else if (parsedResponse.type === "menu" && parsedResponse.keyboard) {
                     payload.text = parsedResponse.text;
                     payload.reply_markup = {
                       inline_keyboard: parsedResponse.keyboard
                     };
+                    // Don't use parse_mode with inline_keyboard
                     console.log(`✅ Using inline_keyboard with structure:`, JSON.stringify(parsedResponse.keyboard, null, 2).substring(0, 300));
                   }
                 } catch (e) {
