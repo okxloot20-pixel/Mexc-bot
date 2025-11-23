@@ -35,6 +35,10 @@ const commands = [
     description: "SHORT лимит лесенкой",
   },
   {
+    command: "close",
+    description: "Закрыть позицию по маркету",
+  },
+  {
     command: "closebs",
     description: "Закрыть SHORT по второй цене на продажу (BBO)",
   },
