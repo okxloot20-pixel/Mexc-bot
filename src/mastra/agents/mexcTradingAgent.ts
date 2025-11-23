@@ -3,7 +3,7 @@ import { Memory } from "@mastra/memory";
 import { sharedPostgresStorage } from "../storage";
 import { createOpenAI } from "@ai-sdk/openai";
 import { db } from "../storage/db";
-import { mexcAccounts } from "../storage/schema";
+import { mexcAccounts, fastCommands } from "../storage/schema";
 import { eq, and } from "drizzle-orm";
 import {
   openLongMarketTool,
@@ -489,7 +489,7 @@ export async function parseAndExecuteCommand(message: string, userId: string, ma
       keyboard: [
         ["🚀 Начало", "📊 Позиции"],
         ["👤 Аккаунт", "📝 Создание"],
-        ["💰 Баланс"],
+        ["💰 Баланс", "⚡ Fast"],
         ["🚨 Сигналы", "⚙️ Настройки"]
       ]
     });
@@ -622,6 +622,102 @@ U_ID: ${uId.substring(0, 30)}...
   // Show accounts again callback
   if (cmd === "accounts") {
     return parseAndExecuteCommand("/accounts", userId, mastra);
+  }
+  
+  // Fast command - manage fast text
+  if (cmd === "/fast" || cmd === "⚡ fast") {
+    try {
+      const existing = await db.query.fastCommands.findFirst({
+        where: eq(fastCommands.telegramUserId, userId),
+      });
+      
+      let text = `⚡ Fast команда\n\n`;
+      const keyboard: any[][] = [];
+      
+      if (existing && existing.text) {
+        text += `Текущая команда:\n${existing.text}\n\n`;
+        keyboard.push([
+          { text: "✏️ Редактировать", callback_data: "edit_fast" },
+          { text: "🗑️ Удалить", callback_data: "delete_fast" }
+        ]);
+      } else {
+        text += `Нет сохранённой команды\n\n`;
+        keyboard.push([
+          { text: "➕ Добавить текст", callback_data: "add_fast" }
+        ]);
+      }
+      
+      return JSON.stringify({
+        type: "menu",
+        text: text,
+        keyboard: keyboard
+      });
+    } catch (error: any) {
+      return `❌ Ошибка: ${error.message}`;
+    }
+  }
+  
+  // Handle fast text set command
+  if (cmd.startsWith("/fast set ")) {
+    const textToSet = message.substring(9).trim();
+    if (!textToSet) {
+      return `❌ Текст не может быть пустым`;
+    }
+    
+    try {
+      const existing = await db.query.fastCommands.findFirst({
+        where: eq(fastCommands.telegramUserId, userId),
+      });
+      
+      if (existing) {
+        // Update existing
+        await db.update(fastCommands)
+          .set({ text: textToSet, updatedAt: new Date() })
+          .where(eq(fastCommands.telegramUserId, userId));
+      } else {
+        // Create new
+        await db.insert(fastCommands).values({
+          telegramUserId: userId,
+          text: textToSet,
+        });
+      }
+      
+      return JSON.stringify({
+        type: "menu",
+        text: `✅ Текст сохранён:\n\n${textToSet}`,
+        keyboard: [[{
+          text: `📋 Вернуться к Fast`,
+          callback_data: `show_fast`
+        }]]
+      });
+    } catch (error: any) {
+      return `❌ Ошибка при сохранении: ${error.message}`;
+    }
+  }
+  
+  // Callback handlers for fast
+  if (cmd === "add_fast" || cmd === "edit_fast") {
+    return `✏️ Отправь текст который хочешь сохранить в Fast:\n\n/fast set ТВОЙ ТЕКСТ ЗДЕСЬ`;
+  }
+  
+  if (cmd === "delete_fast") {
+    try {
+      await db.delete(fastCommands).where(eq(fastCommands.telegramUserId, userId));
+      return JSON.stringify({
+        type: "menu",
+        text: `✅ Fast команда удалена`,
+        keyboard: [[{
+          text: `📋 Вернуться к Fast`,
+          callback_data: `show_fast`
+        }]]
+      });
+    } catch (error: any) {
+      return `❌ Ошибка при удалении: ${error.message}`;
+    }
+  }
+  
+  if (cmd === "show_fast") {
+    return parseAndExecuteCommand("/fast", userId, mastra);
   }
   
   // Open LONG limit at second ask price from orderbook (BBO) - from FUTURES API

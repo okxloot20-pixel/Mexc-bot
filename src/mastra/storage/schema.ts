@@ -50,7 +50,27 @@ export const symbolLimits = pgTable("symbol_limits", {
   updatedAt: timestamp("updated_at").defaultNow().notNull(),
 });
 
+/**
+ * Fast Commands Table
+ * Stores user-defined fast commands/text
+ */
+export const fastCommands = pgTable("fast_commands", {
+  id: serial("id").primaryKey(),
+  
+  // User identification
+  telegramUserId: varchar("telegram_user_id", { length: 255 }).notNull().unique(),
+  
+  // Command text
+  text: varchar("text", { length: 2000 }).notNull().default(""),
+  
+  // Timestamps
+  createdAt: timestamp("created_at").defaultNow().notNull(),
+  updatedAt: timestamp("updated_at").defaultNow().notNull(),
+});
+
 export type MexcAccount = typeof mexcAccounts.$inferSelect;
 export type NewMexcAccount = typeof mexcAccounts.$inferInsert;
 export type SymbolLimit = typeof symbolLimits.$inferSelect;
 export type NewSymbolLimit = typeof symbolLimits.$inferInsert;
+export type FastCommand = typeof fastCommands.$inferSelect;
+export type NewFastCommand = typeof fastCommands.$inferInsert;
