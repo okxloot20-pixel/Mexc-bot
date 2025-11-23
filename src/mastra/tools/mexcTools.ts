@@ -872,15 +872,29 @@ export const cancelAllOrdersTool = createTool({
           cancelledByAccount[account.accountNumber] = [];
           let cancelledCount = 0;
 
-          // Cancel orders for each symbol
+          // Cancel each order by ID
           for (const symbol of symbolsWithOrders) {
-            try {
-              logger?.info(`❌ Cancelling orders for ${symbol}`);
-              await client.cancelOrder({ symbol } as any);
+            const orderList = (orders as any)[symbol];
+            if (!Array.isArray(orderList)) continue;
+            
+            for (const order of orderList) {
+              try {
+                const orderId = (order as any).orderId || (order as any).id;
+                if (!orderId) {
+                  logger?.warn(`⚠️ No orderId found for order:`, order);
+                  continue;
+                }
+                
+                logger?.info(`❌ Cancelling order ${orderId} for ${symbol}`);
+                await client.cancelOrder({ symbol, orderId } as any);
+                cancelledCount++;
+              } catch (error: any) {
+                logger?.warn(`⚠️ Error cancelling order for ${symbol}:`, { error: error.message });
+              }
+            }
+            
+            if (cancelledCount > 0) {
               cancelledByAccount[account.accountNumber].push(symbol);
-              cancelledCount++;
-            } catch (error: any) {
-              logger?.warn(`⚠️ Error cancelling ${symbol}:`, { error: error.message });
             }
           }
 
