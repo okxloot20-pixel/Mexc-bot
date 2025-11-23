@@ -292,8 +292,15 @@ export const mastra = new Mastra({
                       ]
                     ]
                   });
+                } else if (callbackData === "start") {
+                  // Main menu
+                  response = await parseAndExecuteCommand("/start", userId, mastra);
                 } else if (callbackData === "positions") {
-                  response = "💼 Открытые позиции\n\nОтправь: /positions";
+                  response = await parseAndExecuteCommand("/positions", userId, mastra);
+                } else if (callbackData === "balance") {
+                  response = await parseAndExecuteCommand("/balance", userId, mastra);
+                } else if (callbackData === "fast") {
+                  response = "⚡ *Fast команды*\n\n/fast add SYMBOL - добавить монету\n/fast list - список\n/fast remove SYMBOL - удалить";
                 } else if (callbackData === "account") {
                   response = JSON.stringify({
                     type: "menu",
@@ -323,28 +330,7 @@ export const mastra = new Mastra({
                 } else if (callbackData === "help") {
                   response = "ℹ️ *Справка*\n\nОтправь: /help";
                 } else if (callbackData === "back_to_main") {
-                  response = JSON.stringify({
-                    type: "menu",
-                    text: "🤖 *Mexc Futures Trading Bot*",
-                    keyboard: [
-                      [
-                        { text: "📈 Трейдинг", callback_data: "trading" },
-                        { text: "📊 Позиции", callback_data: "positions" }
-                      ],
-                      [
-                        { text: "👤 Аккаунт", callback_data: "account" },
-                        { text: "📦 Ордеры", callback_data: "orders" }
-                      ],
-                      [
-                        { text: "⚡ Fast", callback_data: "fast" }
-                      ],
-                      [
-                        { text: "🚨 Сигналы", callback_data: "signals" },
-                        { text: "⚙️ Настройки", callback_data: "settings" },
-                        { text: "ℹ️ Help", callback_data: "help" }
-                      ]
-                    ]
-                  });
+                  response = await parseAndExecuteCommand("/start", userId, mastra);
                 } else if (callbackData.startsWith("toggle_account_")) {
                   // Handle account toggle via callback
                   const accountNumber = parseInt(callbackData.split("_")[2]);
