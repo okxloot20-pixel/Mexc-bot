@@ -677,8 +677,27 @@ U_ID: ${uId.substring(0, 30)}...
       }
     }
     
-    // Get PnL AFTER closing
-    const pnlInfo = await getPositionPnLForSymbol(userId, symbol);
+    // Get PnL AFTER closing with retries (data may take time to appear in history)
+    let pnlInfo = "";
+    let pnlRetries = 0;
+    const maxPnlRetries = 5;
+    
+    if (positionClosed) {
+      // Wait a bit for history to update
+      await new Promise(resolve => setTimeout(resolve, 1000));
+      
+      // Try to get PnL up to 5 times
+      while (pnlRetries < maxPnlRetries && !pnlInfo) {
+        pnlInfo = await getPositionPnLForSymbol(userId, symbol);
+        if (!pnlInfo) {
+          pnlRetries++;
+          if (pnlRetries < maxPnlRetries) {
+            logger?.info(`📊 PnL not available yet, retry ${pnlRetries}/${maxPnlRetries}`);
+            await new Promise(resolve => setTimeout(resolve, 500));
+          }
+        }
+      }
+    }
     
     if (positionClosed) {
       return `✅ *SHORT закрыта по 10th ask ${tenthAskPrice}*${pnlInfo}\n\n${result}`;
