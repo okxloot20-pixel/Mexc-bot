@@ -456,7 +456,9 @@ export const mastra = new Mastra({
                 
                 try {
                   const parsedResponse = JSON.parse(response);
-                  console.log(`📋 Parsed response:`, JSON.stringify(parsedResponse, null, 2).substring(0, 500));
+                  console.log(`📋 Parsed response type:`, parsedResponse.type);
+                  console.log(`📋 Has keyboard:`, !!parsedResponse.keyboard);
+                  
                   if (parsedResponse.type === "keyboard_menu" && parsedResponse.keyboard) {
                     payload.text = parsedResponse.text;
                     payload.reply_markup = {
@@ -465,14 +467,16 @@ export const mastra = new Mastra({
                       one_time_keyboard: false
                     };
                     payload.parse_mode = "Markdown";
-                    console.log(`✅ Using reply_keyboard`);
+                    console.log(`✅ Using reply_keyboard with ${parsedResponse.keyboard.length} rows`);
                   } else if (parsedResponse.type === "menu" && parsedResponse.keyboard) {
                     payload.text = parsedResponse.text;
+                    // Ensure inline_keyboard is properly structured
                     payload.reply_markup = {
                       inline_keyboard: parsedResponse.keyboard
                     };
-                    // Don't use parse_mode with inline_keyboard
-                    console.log(`✅ Using inline_keyboard with structure:`, JSON.stringify(parsedResponse.keyboard, null, 2).substring(0, 300));
+                    // CRITICAL: Don't use parse_mode with inline_keyboard - it breaks button recognition!
+                    console.log(`✅ Using inline_keyboard with ${parsedResponse.keyboard.length} rows`);
+                    console.log(`✅ reply_markup structure:`, JSON.stringify(payload.reply_markup, null, 2).substring(0, 200));
                   }
                 } catch (e) {
                   // Not JSON, treat as plain text response
@@ -480,6 +484,13 @@ export const mastra = new Mastra({
                   console.log(`📝 Response is plain text, not JSON`);
                 }
                 
+                // Remove parse_mode if inline_keyboard is present
+                if (payload.reply_markup?.inline_keyboard) {
+                  delete payload.parse_mode;
+                  console.log(`🛡️ Removed parse_mode for inline_keyboard compatibility`);
+                }
+                
+                console.log(`📤 Final payload keys:`, Object.keys(payload));
                 console.log(`📤 Final payload for Telegram:`, JSON.stringify(payload, null, 2).substring(0, 400));
 
                 logger?.info("📤 [Telegram] Sending request to Telegram API", {
