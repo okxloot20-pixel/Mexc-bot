@@ -204,30 +204,31 @@ async function getBestBidPrice(symbol: string): Promise<number | null> {
   }
 }
 
-// Helper: Get second bid price from MEXC orderbook (second price to buy)
+// Helper: Get second bid price from MEXC futures orderbook (second price to buy)
 async function getSecondBidPrice(symbol: string): Promise<number | null> {
   try {
     const logger = globalMastra?.getLogger();
-    logger?.info(`📊 Fetching second bid price for ${symbol}`);
+    logger?.info(`📊 Fetching second bid price for ${symbol} (FUTURES)`);
     
-    // Use correct MEXC API endpoint for depth/orderbook
-    const response = await fetch(`https://api.mexc.com/api/v3/depth?symbol=${symbol}&limit=5`);
+    // Use MEXC FUTURES API endpoint for depth/orderbook (not spot!)
+    const response = await fetch(`https://contract.mexc.com/api/v1/contract/depth/${symbol}?limit=5`);
     const data = await response.json();
     
-    logger?.info(`📊 Orderbook bids: ${JSON.stringify(data.bids?.slice(0, 3))}`);
+    logger?.info(`📊 Futures Orderbook bids: ${JSON.stringify(data?.data?.bids?.slice(0, 3))}`);
     
     // Check if response has bids array with at least 2 elements
-    if (Array.isArray(data.bids) && data.bids.length > 1) {
+    const bids = data?.data?.bids || [];
+    if (Array.isArray(bids) && bids.length > 1) {
       // Second element is second best bid
-      const secondBid = parseFloat(data.bids[1][0]);
+      const secondBid = parseFloat(bids[1][0]);
       logger?.info(`💰 Second bid found: ${secondBid} for ${symbol}`);
       return secondBid;
     }
     
-    // DREAMSX402 special handling - if no second bid, use best bid
-    if (symbol.includes("DREAMSX402") && Array.isArray(data.bids) && data.bids.length > 0) {
-      const bestBid = parseFloat(data.bids[0][0]);
-      logger?.info(`💰 Using best bid for DREAMSX402 (second unavailable): ${bestBid}`);
+    // Fallback - if no second bid, use best bid
+    if (Array.isArray(bids) && bids.length > 0) {
+      const bestBid = parseFloat(bids[0][0]);
+      logger?.info(`💰 Using best bid (second unavailable): ${bestBid}`);
       return bestBid;
     }
     
@@ -404,24 +405,25 @@ async function getSeventhAskPrice(symbol: string): Promise<string | null> {
   }
 }
 
-// Helper: Get tenth ask price from MEXC orderbook (for closing SHORT) - returns STRING to preserve precision
+// Helper: Get tenth ask price from MEXC futures orderbook (for closing SHORT) - returns STRING to preserve precision
 async function getTenthAskPrice(symbol: string): Promise<string | null> {
   try {
     const logger = globalMastra?.getLogger();
-    logger?.info(`📊 Fetching tenth ask price (10th SELL price) for ${symbol}`);
+    logger?.info(`📊 Fetching tenth ask price (10th SELL price) for ${symbol} (FUTURES)`);
     
-    // Use correct MEXC API endpoint for depth/orderbook
-    const response = await fetch(`https://api.mexc.com/api/v3/depth?symbol=${symbol}&limit=20`);
+    // Use MEXC FUTURES API endpoint for depth/orderbook (not spot!)
+    const response = await fetch(`https://contract.mexc.com/api/v1/contract/depth/${symbol}?limit=20`);
     const data = await response.json();
     
-    logger?.info(`📊 Full orderbook response:`, JSON.stringify({ bidsLength: data.bids?.length, asksLength: data.asks?.length }));
-    logger?.info(`📊 All asks: ${JSON.stringify(data.asks?.slice(0, 15))}`);
+    const asks = data?.data?.asks || [];
+    logger?.info(`📊 Full futures orderbook response:`, JSON.stringify({ bidsLength: data?.data?.bids?.length, asksLength: asks.length }));
+    logger?.info(`📊 All asks: ${JSON.stringify(asks.slice(0, 15))}`);
     
     // Check if response has asks array with at least 10 elements
-    if (Array.isArray(data.asks) && data.asks.length > 9) {
+    if (Array.isArray(asks) && asks.length > 9) {
       // Tenth element is tenth best ask (asks[9])
       // Keep as STRING to preserve precision for MEXC API
-      const tenthAskRaw = data.asks[9][0];
+      const tenthAskRaw = asks[9][0];
       const tenthAskNumeric = parseFloat(tenthAskRaw);
       logger?.info(`💰 Tenth ask found at asks[9] (RAW STRING): "${tenthAskRaw}"`);
       logger?.info(`💰 Tenth ask (numeric): ${tenthAskNumeric}`);
