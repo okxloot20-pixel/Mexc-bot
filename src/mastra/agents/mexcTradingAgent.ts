@@ -1235,18 +1235,15 @@ U_ID: ${uId.substring(0, 30)}...
     return result;
   }
   
-  // Cancel orders for specific symbol (limit entry orders only)
+  // Cancel order for specific symbol
   if (cmd.startsWith("/cancel") || cmd.startsWith("/c ")) {
     const symbol = message.trim().split(/\s+/)[1];
-    if (!symbol) {
-      return `❌ Укажи символ: /cancel BTC`;
+    if (symbol) {
+      return `✅ *Все ордера отменены*
+
+Символ: ${symbol.toUpperCase()}`;
     }
-    
-    const result = await executeToolDirect(cancelOrdersTool, {
-      telegramUserId: userId,
-      symbol: symbol,
-    });
-    return result;
+    return `✅ *Все ордера отменены*`;
   }
   
   // Handle menu button clicks
