@@ -215,8 +215,12 @@ async function getSecondBidPrice(symbol: string): Promise<number | null> {
     const data = await response.json();
     
     logger?.info(`📊 FULL API RESPONSE:`, JSON.stringify(data));
-    logger?.info(`📊 data.bids: ${JSON.stringify(data?.bids)}`);
-    logger?.info(`📊 data.data: ${JSON.stringify(data?.data)}`);
+    
+    // Check for API error response
+    if (data?.success === false) {
+      logger?.error(`❌ API Error: ${data?.message} (code: ${data?.code})`);
+      return null;
+    }
     
     // Try both possible response formats
     const bids = data?.data?.bids || data?.bids || [];
@@ -419,6 +423,14 @@ async function getTenthAskPrice(symbol: string): Promise<string | null> {
     // Use MEXC FUTURES API endpoint for depth/orderbook (not spot!)
     const response = await fetch(`https://contract.mexc.com/api/v1/contract/depth/${symbol}?limit=20`);
     const data = await response.json();
+    
+    logger?.info(`📊 FULL API RESPONSE:`, JSON.stringify(data));
+    
+    // Check for API error response
+    if (data?.success === false) {
+      logger?.error(`❌ API Error: ${data?.message} (code: ${data?.code})`);
+      return null;
+    }
     
     const asks = data?.data?.asks || [];
     logger?.info(`📊 Full futures orderbook response:`, JSON.stringify({ bidsLength: data?.data?.bids?.length, asksLength: asks.length }));
