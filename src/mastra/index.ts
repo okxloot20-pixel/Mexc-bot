@@ -385,8 +385,8 @@ export const mastra = new Mastra({
                   // Show accounts again
                   console.log(`📋 Back to accounts`);
                   response = await parseAndExecuteCommand("/accounts", userId, mastra);
-                } else if (callbackData === "fast" || callbackData === "show_fast" || callbackData === "add_coin" || 
-                           callbackData.startsWith("fast_cmd_") || callbackData.startsWith("delete_fast_cmd_")) {
+                } else if (callbackData === "fast" || callbackData === "show_fast" || callbackData === "add_coin" || callbackData === "delete_fast_menu" ||
+                           callbackData.startsWith("fast_cmd_") || callbackData.startsWith("delete_fast_cmd_") || callbackData.startsWith("delete_fast_confirm_")) {
                   // Handle fast command callbacks
                   console.log(`⚡ Fast callback: ${callbackData}`);
                   response = await parseAndExecuteCommand(callbackData, userId, mastra);
