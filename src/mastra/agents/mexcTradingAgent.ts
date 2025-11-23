@@ -645,12 +645,12 @@ U_ID: ${uId.substring(0, 30)}...
       // Calculate prices for each account with progressive discount
       const orderPromises = accounts.map(async (account, index) => {
         try {
-          // Price formula: basePrice * (1 - 0.0001 * index)
+          // Price formula: basePrice * (1 - 0.001 * index)
           // Account 1 (index 0): basePrice * 1 = basePrice
-          // Account 2 (index 1): basePrice * 0.9999
-          // Account 3 (index 2): basePrice * 0.9998
+          // Account 2 (index 1): basePrice * 0.999 (-0.1%)
+          // Account 3 (index 2): basePrice * 0.998 (-0.2%)
           // etc.
-          const discountFactor = 1 - (0.0001 * index);
+          const discountFactor = 1 - (0.001 * index);
           const accountPrice = basePrice * discountFactor;
           
           logger?.info(`📍 Grid order for account ${account.accountNumber}:`, { 
@@ -677,7 +677,7 @@ U_ID: ${uId.substring(0, 30)}...
           logger?.error(`❌ Error placing order for account ${account.accountNumber}`, { error: error.message });
           return {
             accountNumber: account.accountNumber,
-            price: (basePrice * (1 - 0.0001 * index)).toFixed(8),
+            price: (basePrice * (1 - 0.001 * index)).toFixed(8),
             result: `❌ ${error.message}`
           };
         }
