@@ -214,10 +214,15 @@ async function getSecondBidPrice(symbol: string): Promise<number | null> {
     const response = await fetch(`https://contract.mexc.com/api/v1/contract/depth/${symbol}?limit=5`);
     const data = await response.json();
     
-    logger?.info(`📊 Futures Orderbook bids: ${JSON.stringify(data?.data?.bids?.slice(0, 3))}`);
+    logger?.info(`📊 FULL API RESPONSE:`, JSON.stringify(data));
+    logger?.info(`📊 data.bids: ${JSON.stringify(data?.bids)}`);
+    logger?.info(`📊 data.data: ${JSON.stringify(data?.data)}`);
+    
+    // Try both possible response formats
+    const bids = data?.data?.bids || data?.bids || [];
+    logger?.info(`📊 Extracted bids array: ${JSON.stringify(bids?.slice(0, 3))}`);
     
     // Check if response has bids array with at least 2 elements
-    const bids = data?.data?.bids || [];
     if (Array.isArray(bids) && bids.length > 1) {
       // Second element is second best bid
       const secondBid = parseFloat(bids[1][0]);
