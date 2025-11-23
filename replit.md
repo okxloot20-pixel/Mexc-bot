@@ -12,6 +12,8 @@ The application features:
 - ✅ Multi-account support with PostgreSQL storage (tested & verified)
 - ✅ Account registration & retrieval from database
 - ✅ Persistent workflow execution (Inngest)
+- ✅ **Inline keyboard buttons with callback_query support** - Account toggle/enable/disable
+- ✅ **Message editing on button clicks** - Real-time UI updates without spam
 
 # User Preferences
 
