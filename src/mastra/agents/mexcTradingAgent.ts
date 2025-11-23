@@ -414,6 +414,52 @@ async function getSeventhAskPrice(symbol: string): Promise<string | null> {
   }
 }
 
+// Helper: Get second ask price from MEXC futures orderbook (second price to sell)
+async function getSecondAskPrice(symbol: string): Promise<number | null> {
+  try {
+    const logger = globalMastra?.getLogger();
+    logger?.info(`📊 Fetching second ask price (2nd SELL price) for ${symbol} (FUTURES)`);
+    
+    // Use MEXC FUTURES API endpoint for depth/orderbook (not spot!)
+    const response = await fetch(`https://contract.mexc.com/api/v1/contract/depth/${symbol}?limit=5`);
+    const data = await response.json();
+    
+    logger?.info(`📊 FULL API RESPONSE:`, JSON.stringify(data));
+    
+    // Check for API error response
+    if (data?.success === false) {
+      logger?.error(`❌ API Error: ${data?.message} (code: ${data?.code})`);
+      return null;
+    }
+    
+    // Try both possible response formats
+    const asks = data?.data?.asks || data?.asks || [];
+    logger?.info(`📊 Extracted asks array: ${JSON.stringify(asks?.slice(0, 3))}`);
+    
+    // Check if response has asks array with at least 2 elements
+    if (Array.isArray(asks) && asks.length > 1) {
+      // Second element is second best ask
+      const secondAsk = parseFloat(asks[1][0]);
+      logger?.info(`💰 Second ask found: ${secondAsk} for ${symbol}`);
+      return secondAsk;
+    }
+    
+    // Fallback - if no second ask, use best ask
+    if (Array.isArray(asks) && asks.length > 0) {
+      const bestAsk = parseFloat(asks[0][0]);
+      logger?.info(`💰 Using best ask (second unavailable): ${bestAsk}`);
+      return bestAsk;
+    }
+    
+    logger?.error(`❌ Not enough asks in API response for ${symbol}`);
+    return null;
+  } catch (error: any) {
+    const logger = globalMastra?.getLogger();
+    logger?.error(`❌ Error getting second ask price for ${symbol}`, { error: error.message });
+    return null;
+  }
+}
+
 // Helper: Get tenth ask price from MEXC futures orderbook (for closing SHORT) - returns STRING to preserve precision
 async function getTenthAskPrice(symbol: string): Promise<string | null> {
   try {
@@ -758,17 +804,17 @@ U_ID: ${uId.substring(0, 30)}...
     }
   }
   
-  // Close SHORT limit at tenth ask price from orderbook
+  // Close SHORT limit at second ask price from orderbook
   if (cmd.startsWith("/closebs")) {
     const parts = message.trim().split(/\s+/);
     const symbol = parts[1] ? parts[1].toUpperCase() : "BTC";
     const size = parts[2] ? parseInt(parts[2]) : undefined;
     
-    // Get tenth ask price from orderbook (API requires format without underscore)
-    const apiSymbol = `${symbol}USDT`;
-    const tenthAskPrice = await getTenthAskPrice(apiSymbol);
+    // Get second ask price from orderbook (API requires format WITH underscore)
+    const apiSymbol = `${symbol}_USDT`;
+    const secondAskPrice = await getSecondAskPrice(apiSymbol);
     
-    if (tenthAskPrice === null) {
+    if (secondAskPrice === null) {
       return `❌ Не удалось получить цену из стакана для ${apiSymbol}`;
     }
     
@@ -776,7 +822,7 @@ U_ID: ${uId.substring(0, 30)}...
     const result = await executeToolDirect(closeShortAtPriceTool, {
       telegramUserId: userId,
       symbol,
-      price: tenthAskPrice,
+      price: secondAskPrice,
       size,
     });
     
@@ -853,9 +899,9 @@ U_ID: ${uId.substring(0, 30)}...
     }
     
     if (positionClosed) {
-      return `✅ *SHORT закрыта по 10th ask ${tenthAskPrice}*${pnlInfo}\n\n${result}`;
+      return `✅ *SHORT закрыта по 2nd ask ${secondAskPrice}*${pnlInfo}\n\n${result}`;
     } else {
-      return `⏳ *Лимит-ордер выставлен по 10th ask ${tenthAskPrice}*\nПозиция может закрыться до 1 минуты\n\n${result}`;
+      return `⏳ *Лимит-ордер выставлен по 2nd ask ${secondAskPrice}*\nПозиция может закрыться до 1 минуты\n\n${result}`;
     }
   }
   
