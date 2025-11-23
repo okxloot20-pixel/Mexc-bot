@@ -484,13 +484,25 @@ export async function parseAndExecuteCommand(message: string, userId: string, ma
   // Help/Start
   if (cmd === "/start" || cmd === "/help") {
     return JSON.stringify({
-      type: "keyboard_menu",
+      type: "menu",
       text: "🤖 *Mexc Futures Trading Bot*",
       keyboard: [
-        ["🚀 Начало", "📊 Позиции"],
-        ["👤 Аккаунт", "📝 Создание"],
-        ["💰 Баланс", "⚡ Fast"],
-        ["🚨 Сигналы", "⚙️ Настройки"]
+        [
+          { text: "📈 Трейдинг", callback_data: "trading" },
+          { text: "📊 Позиции", callback_data: "positions" }
+        ],
+        [
+          { text: "👤 Аккаунт", callback_data: "account" },
+          { text: "📦 Ордеры", callback_data: "orders" }
+        ],
+        [
+          { text: "⚡ Fast", callback_data: "fast" }
+        ],
+        [
+          { text: "🚨 Сигналы", callback_data: "signals" },
+          { text: "⚙️ Настройки", callback_data: "settings" },
+          { text: "ℹ️ Help", callback_data: "help" }
+        ]
       ]
     });
   }
