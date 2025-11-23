@@ -634,32 +634,32 @@ U_ID: ${uId.substring(0, 30)}...
         .limit(1);
       
       const existing = result[0];
-      let coins: string[] = [];
+      let commands: string[] = [];
       if (existing) {
         try {
-          coins = JSON.parse(existing.commands || "[]");
+          commands = JSON.parse(existing.commands || "[]");
         } catch (e) {
-          coins = [];
+          commands = [];
         }
       }
       
-      let text = `⚡ Быстрые монеты\n\n`;
+      let text = `⚡ Быстрые команды\n\n`;
       const keyboard: any[][] = [];
       
-      if (coins.length > 0) {
-        coins.forEach((coin: string) => {
+      if (commands.length > 0) {
+        commands.forEach((cmd: string, idx: number) => {
           keyboard.push([{
-            text: `🟢 SHORT /sm ${coin}`,
-            callback_data: `fast_sm_${coin}`
+            text: `🟢 ${cmd}`,
+            callback_data: `fast_cmd_${idx}`
           }]);
         });
-        text += `Нажми кнопку для быстрого входа SHORT\n`;
+        text += `Нажми кнопку для быстрого входа\n`;
       } else {
-        text += `Нет сохранённых монет\n\n`;
+        text += `Нет сохранённых команд\n\n`;
       }
       
       keyboard.push([{
-        text: "➕ Добавить монету",
+        text: "➕ Добавить команду",
         callback_data: "add_coin"
       }]);
       
@@ -673,16 +673,45 @@ U_ID: ${uId.substring(0, 30)}...
     }
   }
   
-  // Handle fast coin execution
-  if (cmd.startsWith("fast_sm_")) {
-    const coin = cmd.replace("fast_sm_", "");
-    return parseAndExecuteCommand(`/sm ${coin}`, userId, mastra);
+  // Handle fast command execution
+  if (cmd.startsWith("fast_cmd_")) {
+    const indexStr = cmd.replace("fast_cmd_", "");
+    const index = parseInt(indexStr);
+    
+    try {
+      const result = await db
+        .select()
+        .from(fastCommands)
+        .where(eq(fastCommands.telegramUserId, userId))
+        .limit(1);
+      
+      const existing = result[0];
+      if (!existing) {
+        return `❌ Команды не найдены`;
+      }
+      
+      let commands: string[] = [];
+      try {
+        commands = JSON.parse(existing.commands || "[]");
+      } catch (e) {
+        commands = [];
+      }
+      
+      if (index >= 0 && index < commands.length) {
+        const cmdToExecute = commands[index];
+        return parseAndExecuteCommand(cmdToExecute, userId, mastra);
+      } else {
+        return `❌ Команда не найдена`;
+      }
+    } catch (error: any) {
+      return `❌ Ошибка: ${error.message}`;
+    }
   }
   
   // Handle add coin
   if (cmd.startsWith("/fast add ")) {
-    const coinToAdd = message.substring(9).trim().toUpperCase();
-    if (!coinToAdd) {
+    const coinToAdd = `/sm ${message.substring(9).trim().toUpperCase()}`;
+    if (!coinToAdd.replace("/sm ", "")) {
       return `❌ Монета не может быть пустой`;
     }
     
@@ -724,7 +753,7 @@ U_ID: ${uId.substring(0, 30)}...
       
       return JSON.stringify({
         type: "menu",
-        text: `✅ Монета добавлена:\n\n${coinToAdd}`,
+        text: `✅ Команда добавлена:\n\n${coinToAdd}`,
         keyboard: [[{
           text: `📋 Вернуться к Fast`,
           callback_data: `show_fast`
