@@ -1067,6 +1067,7 @@ U_ID: ${uId.substring(0, 30)}...
       
       if (decimalIndex !== -1) {
         const afterDecimal = basePriceStr.substring(decimalIndex + 1);
+        const decimalPlaces = afterDecimal.length;
         // Find index of first non-zero digit
         let firstNonZeroIdx = 0;
         for (let j = 0; j < afterDecimal.length; j++) {
