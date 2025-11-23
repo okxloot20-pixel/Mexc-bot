@@ -744,7 +744,8 @@ export const getOrdersTool = createTool({
             if (Array.isArray(orderList)) {
               for (const order of orderList) {
                 const side = (order as any).side === 1 || (order as any).side === "1" ? "LONG" : "SHORT";
-                results.push(`🔹 ${(order as any).symbol}: ${side}`);
+                const price = (order as any).price;
+                results.push(`🔹 ${(order as any).symbol}: ${side} @ ${price}`);
               }
             }
           }
