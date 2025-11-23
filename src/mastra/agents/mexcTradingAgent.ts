@@ -783,7 +783,7 @@ U_ID: ${uId.substring(0, 30)}...
       return `❌ Не удалось получить цену из стакана для ${apiSymbol}`;
     }
     
-    // Execute close order FIRST
+    // Execute close order
     const result = await executeToolDirect(closeShortAtPriceTool, {
       telegramUserId: userId,
       symbol,
@@ -791,83 +791,8 @@ U_ID: ${uId.substring(0, 30)}...
       size,
     });
     
-    // Wait for limit order to execute (can take up to 60 seconds)
-    // Poll positions until closed or timeout
-    const logger = globalMastra?.getLogger();
-    const maxWaitTime = 90000; // 90 seconds max
-    const pollInterval = 2000; // Check every 2 seconds
-    const startTime = Date.now();
-    let positionClosed = false;
-    
-    while (Date.now() - startTime < maxWaitTime) {
-      try {
-        const accounts = await db.query.mexcAccounts.findMany({
-          where: and(
-            eq(mexcAccounts.telegramUserId, userId),
-            eq(mexcAccounts.isActive, true)
-          ),
-        });
-        
-        // Check if position still exists
-        let positionFound = false;
-        for (const account of accounts) {
-          const { MexcFuturesClient } = await import("@max89701/mexc-futures-sdk");
-          const client = new MexcFuturesClient({
-            authToken: account.uId,
-            logLevel: "INFO"
-          });
-          
-          const posResponse = await client.getOpenPositions("");
-          const allPositions = Array.isArray(posResponse) ? posResponse : (posResponse as any)?.data || [];
-          const hasPosition = allPositions.some((p: any) => p.symbol === apiSymbol);
-          
-          if (hasPosition) {
-            positionFound = true;
-            break;
-          }
-        }
-        
-        if (!positionFound) {
-          positionClosed = true;
-          logger?.info(`✅ Position closed after ${Date.now() - startTime}ms`);
-          break;
-        }
-        
-        // Wait before next check
-        await new Promise(resolve => setTimeout(resolve, pollInterval));
-      } catch (error: any) {
-        logger?.warn(`⚠️ Error checking position status`, { error: error.message });
-        break;
-      }
-    }
-    
-    // Get PnL AFTER closing with retries (data may take time to appear in history)
-    let pnlInfo = "";
-    let pnlRetries = 0;
-    const maxPnlRetries = 5;
-    
-    if (positionClosed) {
-      // Wait a bit for history to update
-      await new Promise(resolve => setTimeout(resolve, 1000));
-      
-      // Try to get PnL up to 5 times
-      while (pnlRetries < maxPnlRetries && !pnlInfo) {
-        pnlInfo = await getPositionPnLForSymbol(userId, symbol);
-        if (!pnlInfo) {
-          pnlRetries++;
-          if (pnlRetries < maxPnlRetries) {
-            logger?.info(`📊 PnL not available yet, retry ${pnlRetries}/${maxPnlRetries}`);
-            await new Promise(resolve => setTimeout(resolve, 500));
-          }
-        }
-      }
-    }
-    
-    if (positionClosed) {
-      return `✅ *SHORT закрыта по 2nd ask ${secondAskPrice}*${pnlInfo}`;
-    } else {
-      return `⏳ *Лимит-ордер выставлен по 2nd ask ${secondAskPrice}*\nПозиция может закрыться до 1 минуты`;
-    }
+    // Return immediate response - don't block waiting for position to close
+    return `⏳ *Лимит-ордер выставлен по 2nd ask ${secondAskPrice}*\nПозиция может закрыться до 1 минуты`;
   }
   
   // Close position (Market)
