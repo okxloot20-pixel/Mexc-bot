@@ -660,7 +660,11 @@ U_ID: ${uId.substring(0, 30)}...
           // Account 3 (index 2): basePrice * 0.998 (-0.2%)
           // etc.
           const discountFactor = 1 - (0.001 * index);
-          const accountPrice = basePrice * discountFactor;
+          let accountPrice = basePrice * discountFactor;
+          
+          // Round to 8 decimal places to avoid floating point precision issues
+          // e.g., 0.0002146 * 0.999 = 0.00021438540000000002 (bad) → 0.00021439 (good)
+          accountPrice = Math.round(accountPrice * 100000000) / 100000000;
           
           logger?.info(`📍 Grid order for account ${account.accountNumber}:`, { 
             index, 
@@ -686,9 +690,11 @@ U_ID: ${uId.substring(0, 30)}...
           });
         } catch (error: any) {
           logger?.error(`❌ Error placing order for account ${account.accountNumber}`, { error: error.message });
+          const errorPrice = basePrice * (1 - 0.001 * index);
+          const roundedErrorPrice = Math.round(errorPrice * 100000000) / 100000000;
           orderResults.push({
             accountNumber: account.accountNumber,
-            price: (basePrice * (1 - 0.001 * index)).toFixed(8),
+            price: roundedErrorPrice.toFixed(8),
             result: `❌ ${error.message}`
           });
         }
