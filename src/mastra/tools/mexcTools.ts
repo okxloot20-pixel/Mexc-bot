@@ -872,34 +872,20 @@ export const cancelAllOrdersTool = createTool({
           cancelledByAccount[account.accountNumber] = [];
           let cancelledCount = 0;
 
-          // Cancel each order by ID
+          // Cancel orders for each symbol using the same method as cancelOrdersTool
           for (const symbol of symbolsWithOrders) {
-            const orderList = (orders as any)[symbol];
-            if (!Array.isArray(orderList)) continue;
-            
-            for (const order of orderList) {
-              try {
-                const orderId = (order as any).orderId || (order as any).id;
-                if (!orderId) {
-                  logger?.warn(`⚠️ No orderId found for order:`, order);
-                  continue;
-                }
-                
-                logger?.info(`❌ Cancelling order ${orderId} for ${symbol}`);
-                await client.cancelOrder({ symbol, orderId } as any);
-                cancelledCount++;
-              } catch (error: any) {
-                logger?.warn(`⚠️ Error cancelling order for ${symbol}:`, { error: error.message });
-              }
-            }
-            
-            if (cancelledCount > 0) {
+            try {
+              logger?.info(`❌ Cancelling all orders for ${symbol}`);
+              await client.cancelOrder({ symbol } as any);
               cancelledByAccount[account.accountNumber].push(symbol);
+              cancelledCount++;
+            } catch (error: any) {
+              logger?.warn(`⚠️ Error cancelling ${symbol}:`, { error: error.message });
             }
           }
 
           if (cancelledCount > 0) {
-            results.push(`✅ Аккаунт ${account.accountNumber}: отменено ${cancelledCount} ордеров (${cancelledByAccount[account.accountNumber].join(", ")})`);
+            results.push(`✅ Аккаунт ${account.accountNumber}: отменено ордеры (${cancelledByAccount[account.accountNumber].join(", ")})`);
           } else {
             results.push(`⚠️ Аккаунт ${account.accountNumber}: не удалось отменить ордера`);
           }
