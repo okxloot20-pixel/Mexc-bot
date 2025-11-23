@@ -312,7 +312,8 @@ export const mastra = new Mastra({
                     ]
                   });
                 } else if (callbackData === "orders") {
-                  response = "📦 Управление ордерами\n\nОтправь: /orders";
+                  console.log(`📦 Orders callback`);
+                  response = await parseAndExecuteCommand("orders", userId, mastra);
                 } else if (callbackData === "subscription") {
                   response = "🎯 *Подписка*\n\nФункция в разработке";
                 } else if (callbackData === "signals") {

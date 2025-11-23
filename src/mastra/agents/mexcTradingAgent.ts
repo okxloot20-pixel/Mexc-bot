@@ -1215,8 +1215,8 @@ U_ID: ${uId.substring(0, 30)}...
     return result;
   }
   
-  // View orders
-  if (cmd === "/orders" || cmd.startsWith("/orders ")) {
+  // View orders (from command or callback)
+  if (cmd === "/orders" || cmd.startsWith("/orders ") || cmd === "orders") {
     const parts = message.trim().split(/\s+/);
     const symbol = parts.length > 1 ? parts[1].toUpperCase() : undefined;
     const result = await executeToolDirect(getOrdersTool, {
