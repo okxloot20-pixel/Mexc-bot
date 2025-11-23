@@ -68,6 +68,7 @@ async function getPositionPnLForSymbol(userId: string, symbol: string): Promise<
     });
     
     if (accounts.length === 0) {
+      logger?.warn(`⚠️ No active accounts found`);
       return "";
     }
     
@@ -84,81 +85,90 @@ async function getPositionPnLForSymbol(userId: string, symbol: string): Promise<
           logLevel: "INFO"
         });
         
-        // Try to get closed positions history (from getHistory or similar method)
         const fullSymbol = `${symbol}_USDT`;
+        logger?.info(`📊 Checking account ${account.accountNumber} for ${fullSymbol} PnL`);
         
+        // Get all open positions first
+        const posResponse = await client.getOpenPositions("");
+        const allPositions = Array.isArray(posResponse) ? posResponse : (posResponse as any)?.data || [];
+        
+        // Check if position exists - if it does, don't include PnL yet
+        const openPosition = allPositions.find((p: any) => p.symbol === fullSymbol);
+        
+        if (openPosition) {
+          logger?.info(`📊 Position still open for ${fullSymbol} on account ${account.accountNumber}, skipping`);
+          continue;
+        }
+        
+        // Position is closed - try to get history
         try {
-          // Try getHistory() or getPositionHistory() to get closed positions with realized PnL
           const historyResponse = await (client as any).getHistory?.() || 
                                   await (client as any).getPositionHistory?.() ||
                                   await (client as any).getClosedPositions?.("");
           
           if (historyResponse) {
             const historyData = Array.isArray(historyResponse) ? historyResponse : (historyResponse as any)?.data || [];
+            logger?.info(`📊 Got history data, length: ${historyData.length}`);
             
             // Filter for current symbol and get the most recent entry
             const recentTrades = historyData
               .filter((h: any) => h.symbol === fullSymbol)
-              .sort((a: any, b: any) => ((b.closeTime || 0) - (a.closeTime || 0)))
+              .sort((a: any, b: any) => ((b.closeTime || b.updateTime || 0) - (a.closeTime || a.updateTime || 0)))
               .slice(0, 1);
+            
+            logger?.info(`📊 Filtered trades for ${fullSymbol}: ${recentTrades.length}`);
             
             if (recentTrades.length > 0) {
               const trade = recentTrades[0];
-              // Use realizedPnl or profitReal from history (these are the ACTUAL realized values)
-              const actualPnlUsd = (trade as any).realizedPnl || (trade as any).profitReal || (trade as any).pnl || 0;
+              // Use realizedPnl or profitReal from history
+              const actualPnlUsd = (trade as any).realizedPnl || (trade as any).profitReal || (trade as any).pnl || (trade as any).realised || 0;
               const actualPnlPercent = (trade as any).profitPercent || (trade as any).profitRatio || 0;
+              
+              logger?.info(`📊 Trade data:`, { 
+                symbol: (trade as any).symbol,
+                realizedPnl: (trade as any).realizedPnl,
+                profitReal: (trade as any).profitReal,
+                pnl: (trade as any).pnl,
+                realised: (trade as any).realised,
+                actualPnlUsd
+              });
               
               const pnlEmoji = actualPnlUsd > 0 ? "📈" : "📉";
               const sideText = (trade as any).positionType === 1 || (trade as any).side === 1 ? "LONG" : "SHORT";
+              const line = `${pnlEmoji} ${sideText}: ${actualPnlUsd > 0 ? "+" : ""}${actualPnlUsd.toFixed(2)}$ (${actualPnlPercent > 0 ? "+" : ""}${(actualPnlPercent * 100).toFixed(2)}%)`;
               
-              pnlLines.push(`${pnlEmoji} ${sideText}: ${actualPnlUsd > 0 ? "+" : ""}${actualPnlUsd.toFixed(2)}$ (${actualPnlPercent > 0 ? "+" : ""}${(actualPnlPercent * 100).toFixed(2)}%)`);
+              logger?.info(`📊 Adding PnL line: ${line}`);
+              pnlLines.push(line);
               totalPnlUsd += actualPnlUsd;
               countPositions++;
-              
-              logger?.info(`📊 Got realized PnL from history for ${fullSymbol}:`, { actualPnlUsd, actualPnlPercent });
-              continue;
             }
           }
         } catch (historyError: any) {
-          logger?.warn(`⚠️ Could not get history data`, { error: historyError.message });
-        }
-        
-        // Fallback: Get current unrealized PnL from open positions
-        logger?.info(`📊 Falling back to open positions for ${fullSymbol}`);
-        const posResponse = await client.getOpenPositions("");
-        const allPositions = Array.isArray(posResponse) ? posResponse : (posResponse as any)?.data || [];
-        
-        const position = allPositions.find((p: any) => p.symbol === fullSymbol);
-        
-        if (position) {
-          const pnlUsd = (position as any).realised || 0;
-          const pnlPercent = ((position as any).profitRatio || 0) * 100;
-          const pnlEmoji = pnlUsd > 0 ? "📈" : "📉";
-          const sideText = (position as any).positionType === 1 ? "LONG" : "SHORT";
-          
-          pnlLines.push(`${pnlEmoji} ${sideText}: ${pnlUsd > 0 ? "+" : ""}${pnlUsd.toFixed(2)}$ (${pnlPercent > 0 ? "+" : ""}${pnlPercent.toFixed(2)}%)`);
-          totalPnlUsd += pnlUsd;
-          countPositions++;
+          logger?.warn(`⚠️ Could not get history data for account ${account.accountNumber}`, { error: historyError.message });
         }
       } catch (error: any) {
         logger?.warn(`⚠️ Error getting PnL for account ${account.accountNumber}`, { error: error.message });
       }
     }
     
+    logger?.info(`📊 Final PnL lines count: ${pnlLines.length}`);
+    
     if (pnlLines.length > 0) {
-      let result = `\n\n📊 *Реализованный PnL перед закрытием:*\n`;
+      let result = `\n\n📊 *Реализованный PnL:*\n`;
       result += pnlLines.join("\n");
       if (countPositions > 1) {
         const totalPnlEmoji = totalPnlUsd > 0 ? "📈" : "📉";
         result += `\n${totalPnlEmoji} *Итого: ${totalPnlUsd > 0 ? "+" : ""}${totalPnlUsd.toFixed(2)}$*`;
       }
+      logger?.info(`📊 Returning PnL info: ${result.substring(0, 100)}...`);
       return result;
     }
     
+    logger?.warn(`⚠️ No PnL data found for symbol ${symbol}`);
     return "";
   } catch (error: any) {
     const logger = globalMastra?.getLogger();
-    logger?.warn(`⚠️ Error getting PnL for symbol ${symbol}`, { error: error.message });
+    logger?.error(`❌ Error getting PnL for symbol ${symbol}`, { error: error.message });
     return "";
   }
 }
