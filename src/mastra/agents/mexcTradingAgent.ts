@@ -16,7 +16,6 @@ import {
   getBalanceTool,
   getOrdersTool,
   cancelOrdersTool,
-  cancelAllOrdersTool,
 } from "../tools/mexcTools";
 import {
   registerAccountTool,
@@ -1227,10 +1226,18 @@ U_ID: ${uId.substring(0, 30)}...
     return result;
   }
   
-  // Cancel all orders across all symbols
-  if (cmd === "/co" || cmd === "co") {
-    const result = await executeToolDirect(cancelAllOrdersTool, {
+  // Cancel orders for symbol: /co SYMBOL
+  if (cmd === "/co" || cmd.startsWith("/co ")) {
+    const parts = message.trim().split(/\s+/);
+    const symbol = parts.length > 1 ? parts[1].toUpperCase() : undefined;
+    
+    if (!symbol) {
+      return `❌ Укажи символ: /co BTC`;
+    }
+    
+    const result = await executeToolDirect(cancelOrdersTool, {
       telegramUserId: userId,
+      symbol: symbol,
     });
     return result;
   }
