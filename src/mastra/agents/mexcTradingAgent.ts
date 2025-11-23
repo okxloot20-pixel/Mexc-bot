@@ -674,10 +674,12 @@ U_ID: ${uId.substring(0, 30)}...
           });
           
           // Execute the order on SPECIFIC account
+          // For very small prices, ensure proper formatting
+          const priceStr = accountPrice.toFixed(8);
           const result = await executeToolDirect(openShortLimitTool, {
             telegramUserId: userId,
             symbol,
-            price: accountPrice,
+            price: parseFloat(priceStr), // Re-parse to ensure clean number
             size: undefined, // Use default max size from symbol limits
             leverage: account.defaultLeverage,
             accountNumber: account.accountNumber, // Trade on this specific account only
@@ -699,10 +701,10 @@ U_ID: ${uId.substring(0, 30)}...
           });
         }
         
-        // Add 200ms delay between requests to avoid MEXC rate limit and SDK issues
+        // Add 500ms delay between requests to avoid MEXC rate limit and SDK issues with small prices
         if (i < accounts.length - 1) {
-          logger?.info(`⏱️ Delaying 200ms before next order...`);
-          await new Promise(resolve => setTimeout(resolve, 200));
+          logger?.info(`⏱️ Delaying 500ms before next order...`);
+          await new Promise(resolve => setTimeout(resolve, 500));
         }
       }
       
