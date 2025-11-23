@@ -1082,8 +1082,6 @@ U_ID: ${uId.substring(0, 30)}...
       
       logger?.info(`🔧 [SHORT Grid] Precision calculation`, { 
         basePrice, 
-        decimalPlaces, 
-        hasLeadingZeros, 
         precision,
         precisionMultiplier 
       });
