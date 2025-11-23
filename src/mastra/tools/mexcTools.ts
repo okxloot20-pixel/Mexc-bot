@@ -797,9 +797,28 @@ export const cancelOrdersTool = createTool({
       for (const account of accounts) {
         try {
           const client = createMexcClient(account.uId);
-          await client.cancelOrder({ symbol } as any);
-          results.push(`✅ Аккаунт ${account.accountNumber}: ордера отменены`);
+          logger?.info(`🎯 Calling cancelOrder for ${symbol} on account ${account.accountNumber}`);
+          
+          const cancelRes = await client.cancelOrder({ symbol } as any);
+          
+          logger?.info(`📨 Cancel response:`, { 
+            response: JSON.stringify(cancelRes),
+            responseType: typeof cancelRes
+          });
+          
+          // Log response details
+          if (cancelRes) {
+            if (typeof cancelRes === 'object') {
+              logger?.info(`📋 Cancel response keys:`, { keys: Object.keys(cancelRes) });
+            }
+          }
+          
+          results.push(`✅ Аккаунт ${account.accountNumber}: ${symbol} - отменено`);
         } catch (error: any) {
+          logger?.error(`❌ Cancel error for ${symbol}:`, { 
+            error: error.message,
+            errorType: error.code || error.status
+          });
           results.push(`❌ Аккаунт ${account.accountNumber}: ${error.message}`);
         }
       }
