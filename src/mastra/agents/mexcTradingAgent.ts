@@ -855,7 +855,7 @@ U_ID: ${uId.substring(0, 30)}...
     // Get PnL after closing
     const pnlInfo = await getPositionPnLForSymbol(userId, symbol);
     
-    return `✅ *Позиция закрыта по рынку*${pnlInfo}\n\n${result}`;
+    return `✅ *Позиция закрыта по рынку*${pnlInfo}`;
   }
   
   // Close LONG market
