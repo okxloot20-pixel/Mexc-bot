@@ -831,20 +831,27 @@ export const cancelOrdersTool = createTool({
             });
           }
           
-          // Cancel each order by ID
+          // Cancel each order by orderId (ONLY symbol + orderId, no other params!)
           let cancelledCount = 0;
           for (const order of ordersList) {
             try {
-              const orderId = (order as any).orderId || (order as any).id;
-              logger?.info(`❌ Cancelling order:`, { orderId, symbol });
+              const orderId = (order as any).orderId;
+              logger?.info(`❌ Cancelling order:`, { orderId, symbol, externalOid: (order as any).externalOid });
               
-              const cancelRes = await client.cancelOrder({ id: orderId, symbol } as any);
+              // Send ONLY symbol + orderId - no other params!
+              const cancelRes = await client.cancelOrder({ 
+                symbol,
+                orderId
+              } as any);
               
               logger?.info(`✅ Cancel response:`, { 
-                response: JSON.stringify(cancelRes)
+                response: JSON.stringify(cancelRes),
+                success: (cancelRes as any).success
               });
               
-              cancelledCount++;
+              if ((cancelRes as any).success === true) {
+                cancelledCount++;
+              }
             } catch (error: any) {
               logger?.warn(`⚠️ Error cancelling order:`, { error: error.message });
             }
