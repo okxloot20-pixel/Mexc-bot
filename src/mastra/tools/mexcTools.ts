@@ -374,16 +374,28 @@ export const openShortLimitTool = createTool({
             logger?.info(`💡 Opening limit at max allowed size`, { tradeSize, symbolMax });
           }
           
-          // Convert price to string to avoid floating point issues with very small numbers
+          // For very small prices (0.0000X...), scale up by 10x to avoid SDK precision issues
+          // The MEXC SDK has trouble with prices that have many leading zeros
+          let submitPrice = context.price;
+          let priceScaled = false;
+          
+          // Check if price has pattern 0.00000 (more than 3 leading zeros)
           const priceStr = String(context.price);
-          logger?.info(`📍 Submitting limit order`, { symbol, price: priceStr, size: tradeSize, leverage: tradeLeverage });
+          if (context.price < 0.0001 && context.price > 0) {
+            submitPrice = context.price * 10;
+            priceScaled = true;
+            logger?.info(`📍 Price scaling: ${context.price} → ${submitPrice} (10x) to avoid SDK issues`);
+          }
+          
+          const submitPriceStr = String(submitPrice);
+          logger?.info(`📍 Submitting limit order`, { symbol, price: submitPriceStr, size: tradeSize, leverage: tradeLeverage, scaled: priceScaled });
           
           await client.submitOrder({
             symbol,
             side: 3,
             vol: tradeSize,
             type: 1,
-            price: priceStr,
+            price: submitPriceStr,
             leverage: tradeLeverage,
             openType: 2,
           });
