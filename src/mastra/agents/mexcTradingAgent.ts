@@ -741,6 +741,32 @@ U_ID: ${uId.substring(0, 30)}...
     return `✅ *Позиция закрыта по рынку*${pnlInfo}`;
   }
   
+  // Close SHORT limit at second bid price from orderbook (BBO)
+  if (cmd.startsWith("/closebs")) {
+    const parts = message.trim().split(/\s+/);
+    const symbol = parts[1] ? parts[1].toUpperCase() : "BTC";
+    const size = parts[2] ? parseInt(parts[2]) : undefined;
+    
+    // Get second bid price from orderbook (FUTURES API - for SHORT closing)
+    const apiSymbol = `${symbol}_USDT`;
+    const secondBidPrice = await getSecondBidPrice(apiSymbol);
+    
+    if (secondBidPrice === null) {
+      return `❌ Не удалось получить цену из стакана для ${apiSymbol}`;
+    }
+    
+    // Execute close order AT PRICE (limit order, not market)
+    const result = await executeToolDirect(closeShortAtPriceTool, {
+      telegramUserId: userId,
+      symbol,
+      price: secondBidPrice,
+      size,
+    });
+    
+    // Return immediate response - don't block waiting for position to close
+    return `⏳ *Лимит-ордер выставлен по 2nd bid (BBO) ${secondBidPrice}*\nПозиция может закрыться до 1 минуты`;
+  }
+  
   // Close LONG market
   if (cmd.startsWith("/lcm")) {
     const parts = message.trim().split(/\s+/);
