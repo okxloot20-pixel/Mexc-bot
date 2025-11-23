@@ -624,7 +624,7 @@ U_ID: ${uId.substring(0, 30)}...
     return parseAndExecuteCommand("/accounts", userId, mastra);
   }
   
-  // Fast command - manage fast commands list
+  // Fast command - manage fast coins list
   if (cmd === "/fast" || cmd === "⚡ fast") {
     try {
       const result = await db
@@ -634,35 +634,33 @@ U_ID: ${uId.substring(0, 30)}...
         .limit(1);
       
       const existing = result[0];
-      let commands: string[] = [];
+      let coins: string[] = [];
       if (existing) {
         try {
-          commands = JSON.parse(existing.commands || "[]");
+          coins = JSON.parse(existing.commands || "[]");
         } catch (e) {
-          commands = [];
+          coins = [];
         }
       }
       
-      let text = `⚡ Fast команды\n\n`;
+      let text = `⚡ Быстрые монеты\n\n`;
       const keyboard: any[][] = [];
       
-      if (commands.length > 0) {
-        text += `📋 Ваши команды:\n\n`;
-        commands.forEach((cmd: string, idx: number) => {
-          text += `${idx + 1}. ${cmd}\n`;
+      if (coins.length > 0) {
+        coins.forEach((coin: string) => {
           keyboard.push([{
-            text: `🗑️ Удалить "${cmd}"`,
-            callback_data: `delete_cmd_${idx}`
+            text: `🟢 SHORT /sm ${coin}`,
+            callback_data: `fast_sm_${coin}`
           }]);
         });
-        text += `\n`;
+        text += `Нажми кнопку для быстрого входа SHORT\n`;
       } else {
-        text += `Нет сохранённых команд\n\n`;
+        text += `Нет сохранённых монет\n\n`;
       }
       
       keyboard.push([{
-        text: "➕ Добавить команду",
-        callback_data: "add_cmd"
+        text: "➕ Добавить монету",
+        callback_data: "add_coin"
       }]);
       
       return JSON.stringify({
@@ -675,11 +673,17 @@ U_ID: ${uId.substring(0, 30)}...
     }
   }
   
-  // Handle add command
+  // Handle fast coin execution
+  if (cmd.startsWith("fast_sm_")) {
+    const coin = cmd.replace("fast_sm_", "");
+    return parseAndExecuteCommand(`/sm ${coin}`, userId, mastra);
+  }
+  
+  // Handle add coin
   if (cmd.startsWith("/fast add ")) {
-    const cmdToAdd = message.substring(9).trim();
-    if (!cmdToAdd) {
-      return `❌ Команда не может быть пустой`;
+    const coinToAdd = message.substring(9).trim().toUpperCase();
+    if (!coinToAdd) {
+      return `❌ Монета не может быть пустой`;
     }
     
     try {
@@ -691,36 +695,36 @@ U_ID: ${uId.substring(0, 30)}...
       
       const existing = result[0];
       
-      let commands: string[] = [];
+      let coins: string[] = [];
       if (existing) {
         try {
-          commands = JSON.parse(existing.commands || "[]");
+          coins = JSON.parse(existing.commands || "[]");
         } catch (e) {
-          commands = [];
+          coins = [];
         }
       }
       
-      // Add new command if not duplicate
-      if (!commands.includes(cmdToAdd)) {
-        commands.push(cmdToAdd);
+      // Add new coin if not duplicate
+      if (!coins.includes(coinToAdd)) {
+        coins.push(coinToAdd);
       }
       
-      const commandsJson = JSON.stringify(commands);
+      const coinsJson = JSON.stringify(coins);
       
       if (existing) {
         await db.update(fastCommands)
-          .set({ commands: commandsJson, updatedAt: new Date() })
+          .set({ commands: coinsJson, updatedAt: new Date() })
           .where(eq(fastCommands.telegramUserId, userId));
       } else {
         await db.insert(fastCommands).values({
           telegramUserId: userId,
-          commands: commandsJson,
+          commands: coinsJson,
         });
       }
       
       return JSON.stringify({
         type: "menu",
-        text: `✅ Команда добавлена:\n\n${cmdToAdd}`,
+        text: `✅ Монета добавлена:\n\n${coinToAdd}`,
         keyboard: [[{
           text: `📋 Вернуться к Fast`,
           callback_data: `show_fast`
@@ -732,57 +736,8 @@ U_ID: ${uId.substring(0, 30)}...
   }
   
   // Callback handlers for fast
-  if (cmd === "add_cmd") {
-    return `✏️ Отправь команду которую хочешь добавить:\n\n/fast add /sm pybobo`;
-  }
-  
-  if (cmd.startsWith("delete_cmd_")) {
-    const indexStr = cmd.replace("delete_cmd_", "");
-    const index = parseInt(indexStr);
-    
-    try {
-      const result = await db
-        .select()
-        .from(fastCommands)
-        .where(eq(fastCommands.telegramUserId, userId))
-        .limit(1);
-      
-      const existing = result[0];
-      
-      if (!existing) {
-        return `❌ Команды не найдены`;
-      }
-      
-      let commands: string[] = [];
-      try {
-        commands = JSON.parse(existing.commands || "[]");
-      } catch (e) {
-        commands = [];
-      }
-      
-      if (index >= 0 && index < commands.length) {
-        const deletedCmd = commands[index];
-        commands.splice(index, 1);
-        
-        const commandsJson = JSON.stringify(commands);
-        await db.update(fastCommands)
-          .set({ commands: commandsJson, updatedAt: new Date() })
-          .where(eq(fastCommands.telegramUserId, userId));
-        
-        return JSON.stringify({
-          type: "menu",
-          text: `✅ Команда удалена:\n\n${deletedCmd}`,
-          keyboard: [[{
-            text: `📋 Вернуться к Fast`,
-            callback_data: `show_fast`
-          }]]
-        });
-      } else {
-        return `❌ Команда не найдена`;
-      }
-    } catch (error: any) {
-      return `❌ Ошибка при удалении: ${error.message}`;
-    }
+  if (cmd === "add_coin") {
+    return `✏️ Отправь монету которую хочешь добавить:\n\n/fast add artx`;
   }
   
   if (cmd === "show_fast") {
