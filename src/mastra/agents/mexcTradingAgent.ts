@@ -628,7 +628,7 @@ U_ID: ${uId.substring(0, 30)}...
     
     try {
       // Get all active accounts
-      const accounts = await db.query.mexcAccounts.findMany({
+      let accounts = await db.query.mexcAccounts.findMany({
         where: and(
           eq(mexcAccounts.telegramUserId, userId),
           eq(mexcAccounts.isActive, true)
@@ -638,6 +638,9 @@ U_ID: ${uId.substring(0, 30)}...
       if (accounts.length === 0) {
         return `❌ Нет активных аккаунтов`;
       }
+      
+      // Sort accounts by accountNumber in ascending order (lower number = grid position 1)
+      accounts = accounts.sort((a, b) => a.accountNumber - b.accountNumber);
       
       const logger = globalMastra?.getLogger();
       logger?.info(`🔴 [SHORT Grid] Starting grid for ${symbol} at base price ${basePrice}`, { accountCount: accounts.length });
@@ -691,11 +694,11 @@ U_ID: ${uId.substring(0, 30)}...
       response += `📊 Символ: ${symbol}_USDT\n`;
       response += `💰 Базовая цена: ${basePrice}\n`;
       response += `📈 Аккаунтов: ${accounts.length}\n\n`;
-      response += `📋 *Ордера по аккаунтам:*\n`;
+      response += `📋 *Ордера по сетке:*\n`;
       
       orderResults.forEach((result, idx) => {
         const emoji = result.result.includes("❌") ? "❌" : "✅";
-        response += `${emoji} Акк #${result.accountNumber}: ${result.price}\n`;
+        response += `${emoji} Ак${idx + 1} (#${result.accountNumber}): ${result.price}\n`;
       });
       
       const successCount = orderResults.filter(r => !r.result.includes("❌")).length;
