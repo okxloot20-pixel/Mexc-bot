@@ -1215,6 +1215,17 @@ U_ID: ${uId.substring(0, 30)}...
     return result;
   }
   
+  // View orders
+  if (cmd === "/orders" || cmd.startsWith("/orders ")) {
+    const parts = message.trim().split(/\s+/);
+    const symbol = parts.length > 1 ? parts[1].toUpperCase() : undefined;
+    const result = await executeToolDirect(getOrdersTool, {
+      telegramUserId: userId,
+      symbol: symbol,
+    });
+    return result;
+  }
+  
   // Cancel order
   if (cmd.startsWith("/cancel") || cmd.startsWith("/c ")) {
     const symbol = message.trim().split(/\s+/)[1];
