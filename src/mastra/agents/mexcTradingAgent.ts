@@ -328,6 +328,39 @@ async function getFourthAskPrice(symbol: string): Promise<string | null> {
   }
 }
 
+// Helper: Get fourth bid price from MEXC orderbook (for closing SHORT) - returns STRING to preserve precision
+async function getFourthBidPrice(symbol: string): Promise<string | null> {
+  try {
+    const logger = globalMastra?.getLogger();
+    logger?.info(`📊 Fetching fourth bid price (4th BUY price) for ${symbol}`);
+    
+    // Use correct MEXC API endpoint for depth/orderbook
+    const response = await fetch(`https://api.mexc.com/api/v3/depth?symbol=${symbol}&limit=10`);
+    const data = await response.json();
+    
+    logger?.info(`📊 Full orderbook response:`, JSON.stringify({ bidsLength: data.bids?.length, asksLength: data.asks?.length }));
+    logger?.info(`📊 All bids: ${JSON.stringify(data.bids?.slice(0, 10))}`);
+    
+    // Check if response has bids array with at least 4 elements
+    if (Array.isArray(data.bids) && data.bids.length > 3) {
+      // Fourth element is fourth best bid (bids[3])
+      // Keep as STRING to preserve precision for MEXC API
+      const fourthBidRaw = data.bids[3][0];
+      const fourthBidNumeric = parseFloat(fourthBidRaw);
+      logger?.info(`💰 Fourth bid found at bids[3] (RAW STRING): "${fourthBidRaw}"`);
+      logger?.info(`💰 Fourth bid (numeric): ${fourthBidNumeric}`);
+      return fourthBidRaw; // Return STRING not number
+    }
+    
+    logger?.error(`❌ Not enough bids in API response for ${symbol}`);
+    return null;
+  } catch (error: any) {
+    const logger = globalMastra?.getLogger();
+    logger?.error(`❌ Error getting fourth bid price for ${symbol}`, { error: error.message });
+    return null;
+  }
+}
+
 // Simple command parser - no LLM needed for basic testing
 export async function parseAndExecuteCommand(message: string, userId: string, mastra?: any): Promise<string> {
   if (mastra) {
@@ -506,17 +539,17 @@ U_ID: ${uId.substring(0, 30)}...
     return `✅ *SHORT лимит по 2nd bid ${secondBidPrice}*\n\n${result}`;
   }
   
-  // Close SHORT limit at second ask price from orderbook
+  // Close SHORT limit at fourth bid price from orderbook
   if (cmd.startsWith("/closebs")) {
     const parts = message.trim().split(/\s+/);
     const symbol = parts[1] ? parts[1].toUpperCase() : "BTC";
     const size = parts[2] ? parseInt(parts[2]) : undefined;
     
-    // Get second ask price from orderbook (API requires format without underscore)
+    // Get fourth bid price from orderbook (API requires format without underscore)
     const apiSymbol = `${symbol}USDT`;
-    const secondAskPrice = await getSecondAskPrice(apiSymbol);
+    const fourthBidPrice = await getFourthBidPrice(apiSymbol);
     
-    if (secondAskPrice === null) {
+    if (fourthBidPrice === null) {
       return `❌ Не удалось получить цену из стакана для ${apiSymbol}`;
     }
     
@@ -524,7 +557,7 @@ U_ID: ${uId.substring(0, 30)}...
     const result = await executeToolDirect(closeShortAtPriceTool, {
       telegramUserId: userId,
       symbol,
-      price: secondAskPrice,
+      price: fourthBidPrice,
       size,
     });
     
@@ -534,7 +567,7 @@ U_ID: ${uId.substring(0, 30)}...
     // Get PnL AFTER closing
     const pnlInfo = await getPositionPnLForSymbol(userId, symbol);
     
-    return `✅ *SHORT закрыта по 2nd ask ${secondAskPrice}*${pnlInfo}\n\n${result}`;
+    return `✅ *SHORT закрыта по 4th bid ${fourthBidPrice}*${pnlInfo}\n\n${result}`;
   }
   
   // Close position
