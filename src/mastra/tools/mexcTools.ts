@@ -647,7 +647,8 @@ export const getBalanceTool = createTool({
       }
 
       const results: string[] = [];
-      results.push("💰 *Твои аккаунты и баланс:*\n");
+      const balances: { [key: number]: number } = {};
+      let totalBalance = 0;
 
       for (const account of accounts) {
         try {
@@ -677,16 +678,20 @@ export const getBalanceTool = createTool({
           
           logger?.info(`💵 Extracted balance for account ${account.accountNumber}`, { balance });
 
+          balances[account.accountNumber] = balance;
+          totalBalance += balance;
+          
           results.push(
             `✅ *Аккаунт ${account.accountNumber}*\n` +
-            `   Баланс: ${balance.toFixed(2)} USDT\n` +
-            `   Плечо: ${account.defaultLeverage}x | Размер: ${account.defaultSize}`
+            `   Баланс: ${balance.toFixed(2)} USDT`
           );
         } catch (error: any) {
           logger?.error(`❌ Error getting balance for account ${account.accountNumber}`, { error: error.message });
           results.push(`❌ Аккаунт ${account.accountNumber}: ${error.message}`);
         }
       }
+
+      results.push(`\n💵 *Итого: ${totalBalance.toFixed(2)} USDT*`);
 
       return { success: true, message: results.join("\n") };
     } catch (error: any) {
