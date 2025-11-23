@@ -321,6 +321,8 @@ export const mastra = new Mastra({
                 } else if (callbackData.startsWith("toggle_account_")) {
                   // Handle account toggle via callback
                   const accountNumber = parseInt(callbackData.split("_")[2]);
+                  console.log(`🔘 Toggle account callback: accountNumber=${accountNumber}, userId=${userId}`);
+                  logger?.info("🔘 [Telegram] Toggle account callback", { accountNumber, userId });
                   
                   try {
                     // Get current account status from DB
@@ -335,11 +337,14 @@ export const mastra = new Mastra({
                       // Send the current status so agent can toggle it properly
                       const statusPrefix = account.isActive ? "✅" : "❌";
                       const simulatedMessage = `${statusPrefix} ${accountNumber}`;
+                      console.log(`📝 Simulated message: "${simulatedMessage}"`);
                       response = await parseAndExecuteCommand(simulatedMessage, userId, mastra);
+                      console.log(`✅ Response from parseAndExecuteCommand: ${response.substring(0, 100)}...`);
                     } else {
                       response = `❌ Аккаунт #${accountNumber} не найден`;
                     }
                   } catch (error: any) {
+                    console.log(`❌ Error in toggle callback: ${error.message}`);
                     response = `❌ Ошибка: ${error.message}`;
                   }
                 } else {
@@ -360,15 +365,23 @@ export const mastra = new Mastra({
                   
                   try {
                     const parsedResponse = JSON.parse(response);
+                    console.log(`📋 Parsed response type: ${parsedResponse.type}`);
+                    logger?.info("📋 [Telegram] Parsed response", { type: parsedResponse.type, hasKeyboard: !!parsedResponse.keyboard });
                     if (parsedResponse.type === "menu" && parsedResponse.keyboard) {
                       editPayload.text = parsedResponse.text;
                       editPayload.reply_markup = {
                         inline_keyboard: parsedResponse.keyboard
                       };
+                      console.log(`🎯 Setting inline_keyboard with ${parsedResponse.keyboard.length} rows`);
+                      logger?.info("🎯 [Telegram] Setting inline_keyboard", { rows: parsedResponse.keyboard.length });
                     }
                   } catch (e) {
                     editPayload.parse_mode = "Markdown";
+                    console.log(`📝 Response is plain text (not JSON)`);
                   }
+                  
+                  console.log(`📤 Sending editMessageText to Telegram`);
+                  logger?.info("📤 [Telegram] Sending editMessageText", { chatId, messageId });
                   
                   await fetch(apiUrl, {
                     method: "POST",
