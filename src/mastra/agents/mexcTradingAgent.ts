@@ -701,10 +701,10 @@ U_ID: ${uId.substring(0, 30)}...
           });
         }
         
-        // Add 500ms delay between requests to avoid MEXC rate limit and SDK issues with small prices
+        // Add 1000ms delay between requests to avoid MEXC SDK issues with very small prices
         if (i < accounts.length - 1) {
-          logger?.info(`⏱️ Delaying 500ms before next order...`);
-          await new Promise(resolve => setTimeout(resolve, 500));
+          logger?.info(`⏱️ Delaying 1000ms before next order...`);
+          await new Promise(resolve => setTimeout(resolve, 1000));
         }
       }
       

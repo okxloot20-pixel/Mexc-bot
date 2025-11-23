@@ -374,14 +374,16 @@ export const openShortLimitTool = createTool({
             logger?.info(`💡 Opening limit at max allowed size`, { tradeSize, symbolMax });
           }
           
-          logger?.info(`📍 Submitting limit order`, { symbol, price: context.price, size: tradeSize, leverage: tradeLeverage });
+          // Convert price to string to avoid floating point issues with very small numbers
+          const priceStr = String(context.price);
+          logger?.info(`📍 Submitting limit order`, { symbol, price: priceStr, size: tradeSize, leverage: tradeLeverage });
           
           await client.submitOrder({
             symbol,
             side: 3,
             vol: tradeSize,
             type: 1,
-            price: context.price,
+            price: priceStr,
             leverage: tradeLeverage,
             openType: 2,
           });
