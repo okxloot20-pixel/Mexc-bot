@@ -442,6 +442,12 @@ export async function parseAndExecuteCommand(message: string, userId: string, ma
   if (mastra) {
     globalMastra = mastra;
   }
+  
+  // Ensure message is a valid string
+  if (!message || typeof message !== 'string') {
+    return `❌ Ошибка: сообщение не корректно`;
+  }
+  
   const cmd = message.toLowerCase().trim();
   
   // Help/Start
