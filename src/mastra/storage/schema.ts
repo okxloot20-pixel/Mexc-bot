@@ -52,7 +52,7 @@ export const symbolLimits = pgTable("symbol_limits", {
 
 /**
  * Fast Commands Table
- * Stores user-defined fast commands/text
+ * Stores user-defined fast commands list (stored as JSON array)
  */
 export const fastCommands = pgTable("fast_commands", {
   id: serial("id").primaryKey(),
@@ -60,8 +60,8 @@ export const fastCommands = pgTable("fast_commands", {
   // User identification
   telegramUserId: varchar("telegram_user_id", { length: 255 }).notNull().unique(),
   
-  // Command text
-  text: varchar("text", { length: 2000 }).notNull().default(""),
+  // Commands list (JSON array of command strings)
+  commands: varchar("commands", { length: 2000 }).notNull().default("[]"),
   
   // Timestamps
   createdAt: timestamp("created_at").defaultNow().notNull(),

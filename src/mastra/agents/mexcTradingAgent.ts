@@ -624,28 +624,43 @@ U_ID: ${uId.substring(0, 30)}...
     return parseAndExecuteCommand("/accounts", userId, mastra);
   }
   
-  // Fast command - manage fast text
+  // Fast command - manage fast commands list
   if (cmd === "/fast" || cmd === "⚡ fast") {
     try {
       const existing = await db.query.fastCommands.findFirst({
         where: eq(fastCommands.telegramUserId, userId),
       });
       
-      let text = `⚡ Fast команда\n\n`;
+      let commands: string[] = [];
+      if (existing) {
+        try {
+          commands = JSON.parse(existing.commands || "[]");
+        } catch (e) {
+          commands = [];
+        }
+      }
+      
+      let text = `⚡ Fast команды\n\n`;
       const keyboard: any[][] = [];
       
-      if (existing && existing.text) {
-        text += `Текущая команда:\n${existing.text}\n\n`;
-        keyboard.push([
-          { text: "✏️ Редактировать", callback_data: "edit_fast" },
-          { text: "🗑️ Удалить", callback_data: "delete_fast" }
-        ]);
+      if (commands.length > 0) {
+        text += `📋 Ваши команды:\n\n`;
+        commands.forEach((cmd: string, idx: number) => {
+          text += `${idx + 1}. ${cmd}\n`;
+          keyboard.push([{
+            text: `🗑️ Удалить "${cmd}"`,
+            callback_data: `delete_cmd_${idx}`
+          }]);
+        });
+        text += `\n`;
       } else {
-        text += `Нет сохранённой команды\n\n`;
-        keyboard.push([
-          { text: "➕ Добавить текст", callback_data: "add_fast" }
-        ]);
+        text += `Нет сохранённых команд\n\n`;
       }
+      
+      keyboard.push([{
+        text: "➕ Добавить команду",
+        callback_data: "add_cmd"
+      }]);
       
       return JSON.stringify({
         type: "menu",
@@ -657,60 +672,103 @@ U_ID: ${uId.substring(0, 30)}...
     }
   }
   
-  // Handle fast text set command
-  if (cmd.startsWith("/fast set ")) {
-    const textToSet = message.substring(9).trim();
-    if (!textToSet) {
-      return `❌ Текст не может быть пустым`;
+  // Handle add command
+  if (cmd.startsWith("/fast add ")) {
+    const cmdToAdd = message.substring(9).trim();
+    if (!cmdToAdd) {
+      return `❌ Команда не может быть пустой`;
     }
     
     try {
-      const existing = await db.query.fastCommands.findFirst({
+      let existing = await db.query.fastCommands.findFirst({
         where: eq(fastCommands.telegramUserId, userId),
       });
       
+      let commands: string[] = [];
       if (existing) {
-        // Update existing
+        try {
+          commands = JSON.parse(existing.commands || "[]");
+        } catch (e) {
+          commands = [];
+        }
+      }
+      
+      // Add new command if not duplicate
+      if (!commands.includes(cmdToAdd)) {
+        commands.push(cmdToAdd);
+      }
+      
+      const commandsJson = JSON.stringify(commands);
+      
+      if (existing) {
         await db.update(fastCommands)
-          .set({ text: textToSet, updatedAt: new Date() })
+          .set({ commands: commandsJson, updatedAt: new Date() })
           .where(eq(fastCommands.telegramUserId, userId));
       } else {
-        // Create new
         await db.insert(fastCommands).values({
           telegramUserId: userId,
-          text: textToSet,
+          commands: commandsJson,
         });
       }
       
       return JSON.stringify({
         type: "menu",
-        text: `✅ Текст сохранён:\n\n${textToSet}`,
+        text: `✅ Команда добавлена:\n\n${cmdToAdd}`,
         keyboard: [[{
           text: `📋 Вернуться к Fast`,
           callback_data: `show_fast`
         }]]
       });
     } catch (error: any) {
-      return `❌ Ошибка при сохранении: ${error.message}`;
+      return `❌ Ошибка при добавлении: ${error.message}`;
     }
   }
   
   // Callback handlers for fast
-  if (cmd === "add_fast" || cmd === "edit_fast") {
-    return `✏️ Отправь текст который хочешь сохранить в Fast:\n\n/fast set ТВОЙ ТЕКСТ ЗДЕСЬ`;
+  if (cmd === "add_cmd") {
+    return `✏️ Отправь команду которую хочешь добавить:\n\n/fast add /sm pybobo`;
   }
   
-  if (cmd === "delete_fast") {
+  if (cmd.startsWith("delete_cmd_")) {
+    const indexStr = cmd.replace("delete_cmd_", "");
+    const index = parseInt(indexStr);
+    
     try {
-      await db.delete(fastCommands).where(eq(fastCommands.telegramUserId, userId));
-      return JSON.stringify({
-        type: "menu",
-        text: `✅ Fast команда удалена`,
-        keyboard: [[{
-          text: `📋 Вернуться к Fast`,
-          callback_data: `show_fast`
-        }]]
+      let existing = await db.query.fastCommands.findFirst({
+        where: eq(fastCommands.telegramUserId, userId),
       });
+      
+      if (!existing) {
+        return `❌ Команды не найдены`;
+      }
+      
+      let commands: string[] = [];
+      try {
+        commands = JSON.parse(existing.commands || "[]");
+      } catch (e) {
+        commands = [];
+      }
+      
+      if (index >= 0 && index < commands.length) {
+        const deletedCmd = commands[index];
+        commands.splice(index, 1);
+        
+        const commandsJson = JSON.stringify(commands);
+        await db.update(fastCommands)
+          .set({ commands: commandsJson, updatedAt: new Date() })
+          .where(eq(fastCommands.telegramUserId, userId));
+        
+        return JSON.stringify({
+          type: "menu",
+          text: `✅ Команда удалена:\n\n${deletedCmd}`,
+          keyboard: [[{
+            text: `📋 Вернуться к Fast`,
+            callback_data: `show_fast`
+          }]]
+        });
+      } else {
+        return `❌ Команда не найдена`;
+      }
     } catch (error: any) {
       return `❌ Ошибка при удалении: ${error.message}`;
     }
