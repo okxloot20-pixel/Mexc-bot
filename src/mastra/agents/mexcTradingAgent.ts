@@ -864,9 +864,9 @@ U_ID: ${uId.substring(0, 30)}...
     }
     
     if (positionClosed) {
-      return `✅ *SHORT закрыта по 2nd ask ${secondAskPrice}*${pnlInfo}\n\n${result}`;
+      return `✅ *SHORT закрыта по 2nd ask ${secondAskPrice}*${pnlInfo}`;
     } else {
-      return `⏳ *Лимит-ордер выставлен по 2nd ask ${secondAskPrice}*\nПозиция может закрыться до 1 минуты\n\n${result}`;
+      return `⏳ *Лимит-ордер выставлен по 2nd ask ${secondAskPrice}*\nПозиция может закрыться до 1 минуты`;
     }
   }
   
