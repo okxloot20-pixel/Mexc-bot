@@ -374,9 +374,19 @@ export const openShortLimitTool = createTool({
             logger?.info(`💡 Opening limit at max allowed size`, { tradeSize, symbolMax });
           }
           
-          // Convert price to string to maintain precision
-          const submitPriceStr = String(context.price);
-          logger?.info(`📍 Submitting limit order`, { symbol, price: submitPriceStr, size: tradeSize, leverage: tradeLeverage });
+          // For very small prices (< 0.0001), multiply by 10 to avoid SDK precision issues
+          // Example: 0.0002176 → 0.002176 (then MEXC processes it correctly)
+          let submitPrice = context.price;
+          let priceMultiplied = false;
+          
+          if (context.price < 0.0001 && context.price > 0) {
+            submitPrice = context.price * 10;
+            priceMultiplied = true;
+            logger?.info(`📍 Price multiplication: ${context.price} × 10 = ${submitPrice} (to avoid SDK issues)`);
+          }
+          
+          const submitPriceStr = String(submitPrice);
+          logger?.info(`📍 Submitting limit order`, { symbol, price: submitPriceStr, size: tradeSize, leverage: tradeLeverage, multiplied: priceMultiplied });
           
           await client.submitOrder({
             symbol,
