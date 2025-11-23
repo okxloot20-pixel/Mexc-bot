@@ -335,7 +335,7 @@ export const mastra = new Mastra({
                         { text: "📦 Ордеры", callback_data: "orders" }
                       ],
                       [
-                        { text: "🎯 Подписка", callback_data: "subscription" }
+                        { text: "⚡ Fast", callback_data: "fast" }
                       ],
                       [
                         { text: "🚨 Сигналы", callback_data: "signals" },
