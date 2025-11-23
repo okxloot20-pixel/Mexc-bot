@@ -486,10 +486,10 @@ export async function parseAndExecuteCommand(message: string, userId: string, ma
       type: "keyboard_menu",
       text: "🤖 *Mexc Futures Trading Bot*",
       keyboard: [
-        ["📋 Команды", "📊 Позиции"],
+        ["ℹ️ Help", "📊 Позиции"],
         ["👤 Аккаунт", "📝 Создание"],
         ["💰 Баланс"],
-        ["🚨 Сигналы", "⚙️ Настройки", "ℹ️ Help"]
+        ["🚨 Сигналы", "⚙️ Настройки"]
       ]
     });
   }
