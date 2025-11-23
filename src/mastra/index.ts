@@ -294,7 +294,11 @@ export const mastra = new Mastra({
                   });
                 } else if (callbackData === "start") {
                   // Main menu
+                  console.log(`🚀 START callback - calling parseAndExecuteCommand("/start")`);
                   response = await parseAndExecuteCommand("/start", userId, mastra);
+                  console.log(`🚀 START callback response length: ${response.length} chars`);
+                  console.log(`🚀 START callback response preview: ${response.substring(0, 150)}`);
+                  logger?.info("🚀 [Telegram] START callback response", { length: response.length, preview: response.substring(0, 100) });
                 } else if (callbackData === "positions") {
                   response = await parseAndExecuteCommand("/positions", userId, mastra);
                 } else if (callbackData === "balance") {
@@ -396,7 +400,8 @@ export const mastra = new Mastra({
                   try {
                     const parsedResponse = JSON.parse(response);
                     console.log(`📋 Parsed response type: ${parsedResponse.type}`);
-                    logger?.info("📋 [Telegram] Parsed response", { type: parsedResponse.type, hasKeyboard: !!parsedResponse.keyboard });
+                    console.log(`📋 Parsed response keyboard rows: ${parsedResponse.keyboard?.length || 0}`);
+                    logger?.info("📋 [Telegram] Parsed response", { type: parsedResponse.type, hasKeyboard: !!parsedResponse.keyboard, keyboardRows: parsedResponse.keyboard?.length });
                     if (parsedResponse.type === "menu" && parsedResponse.keyboard) {
                       editPayload.text = parsedResponse.text;
                       editPayload.reply_markup = {
@@ -404,15 +409,17 @@ export const mastra = new Mastra({
                       };
                       delete editPayload.parse_mode;
                       console.log(`🎯 Setting inline_keyboard with ${parsedResponse.keyboard.length} rows`);
+                      console.log(`🎯 First row buttons: ${JSON.stringify(parsedResponse.keyboard[0], null, 2)}`);
                       logger?.info("🎯 [Telegram] Setting inline_keyboard", { rows: parsedResponse.keyboard.length });
                     }
                   } catch (e) {
                     editPayload.parse_mode = "Markdown";
-                    console.log(`📝 Response is plain text (not JSON)`);
+                    console.log(`📝 Response is plain text (not JSON)`, e);
                   }
                   
                   console.log(`📤 Sending editMessageText to Telegram`);
-                  logger?.info("📤 [Telegram] Sending editMessageText", { chatId, messageId });
+                  console.log(`📤 Full payload:`, JSON.stringify(editPayload, null, 2).substring(0, 300));
+                  logger?.info("📤 [Telegram] Sending editMessageText", { chatId, messageId, hasReplyMarkup: !!editPayload.reply_markup });
                   
                   await fetch(apiUrl, {
                     method: "POST",
