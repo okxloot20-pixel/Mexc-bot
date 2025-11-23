@@ -479,8 +479,7 @@ export const mastra = new Mastra({
                     console.log(`✅ reply_markup structure:`, JSON.stringify(payload.reply_markup, null, 2).substring(0, 200));
                   }
                 } catch (e) {
-                  // Not JSON, treat as plain text response
-                  payload.parse_mode = "Markdown";
+                  // Not JSON, treat as plain text response (no parse_mode - Markdown breaks with emojis and Cyrillic)
                   console.log(`📝 Response is plain text, not JSON`);
                 }
                 
