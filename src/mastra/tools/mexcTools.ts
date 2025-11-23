@@ -797,23 +797,64 @@ export const cancelOrdersTool = createTool({
       for (const account of accounts) {
         try {
           const client = createMexcClient(account.uId);
-          logger?.info(`🎯 Calling cancelOrder for ${symbol} on account ${account.accountNumber}`);
+          logger?.info(`🎯 Getting orders for ${symbol} on account ${account.accountNumber}`);
           
-          const cancelRes = await client.cancelOrder({ symbol } as any);
+          // Get orders for the symbol
+          const orders = await client.getOpenOrders({ symbol } as any);
           
-          logger?.info(`📨 Cancel response:`, { 
-            response: JSON.stringify(cancelRes),
-            responseType: typeof cancelRes
-          });
+          if (!orders || Object.keys(orders).length === 0) {
+            results.push(`⚠️ Аккаунт ${account.accountNumber}: нет ордеров по ${context.symbol}`);
+            continue;
+          }
           
-          // Log response details
-          if (cancelRes) {
-            if (typeof cancelRes === 'object') {
-              logger?.info(`📋 Cancel response keys:`, { keys: Object.keys(cancelRes) });
+          logger?.info(`📋 Found orders:`, { ordersKeys: Object.keys(orders) });
+          
+          // Extract orders list
+          const ordersList: any[] = [];
+          for (const [key, orderList] of Object.entries(orders)) {
+            if (Array.isArray(orderList)) {
+              ordersList.push(...orderList);
             }
           }
           
-          results.push(`✅ Аккаунт ${account.accountNumber}: ${symbol} - отменено`);
+          logger?.info(`📝 Total orders for symbol: ${ordersList.length}`);
+          
+          if (ordersList.length === 0) {
+            results.push(`⚠️ Аккаунт ${account.accountNumber}: нет ордеров по ${context.symbol}`);
+            continue;
+          }
+          
+          // Log first order structure to understand fields
+          if (ordersList.length > 0) {
+            logger?.info(`🔍 First order structure:`, { 
+              order: JSON.stringify(ordersList[0], null, 2)
+            });
+          }
+          
+          // Cancel each order by ID
+          let cancelledCount = 0;
+          for (const order of ordersList) {
+            try {
+              const orderId = (order as any).orderId || (order as any).id;
+              logger?.info(`❌ Cancelling order:`, { orderId, symbol });
+              
+              const cancelRes = await client.cancelOrder({ id: orderId, symbol } as any);
+              
+              logger?.info(`✅ Cancel response:`, { 
+                response: JSON.stringify(cancelRes)
+              });
+              
+              cancelledCount++;
+            } catch (error: any) {
+              logger?.warn(`⚠️ Error cancelling order:`, { error: error.message });
+            }
+          }
+          
+          if (cancelledCount > 0) {
+            results.push(`✅ Аккаунт ${account.accountNumber}: отменено ${cancelledCount} ордеров по ${context.symbol}`);
+          } else {
+            results.push(`❌ Аккаунт ${account.accountNumber}: не удалось отменить ордера`);
+          }
         } catch (error: any) {
           logger?.error(`❌ Cancel error for ${symbol}:`, { 
             error: error.message,
