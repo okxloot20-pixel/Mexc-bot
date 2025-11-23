@@ -1072,9 +1072,9 @@ U_ID: ${uId.substring(0, 30)}...
           const discountFactor = 1 - (0.001 * index);
           let accountPrice = basePrice * discountFactor;
           
-          // Round to 8 decimal places to avoid floating point precision issues
-          // e.g., 0.0002146 * 0.999 = 0.00021438540000000002 (bad) → 0.00021439 (good)
-          accountPrice = Math.round(accountPrice * 100000000) / 100000000;
+          // Truncate to 6 decimal places (remove last 2 digits)
+          // e.g., 0.00061938 → 0.000619
+          accountPrice = Math.floor(accountPrice * 1000000) / 1000000;
           
           logger?.info(`📍 Grid order for account ${account.accountNumber}:`, { 
             index, 
@@ -1084,8 +1084,8 @@ U_ID: ${uId.substring(0, 30)}...
           });
           
           // Execute the order on SPECIFIC account
-          // For very small prices, ensure proper formatting
-          const priceStr = accountPrice.toFixed(8);
+          // For very small prices, ensure proper formatting (6 decimal places)
+          const priceStr = accountPrice.toFixed(6);
           const result = await executeToolDirect(openShortLimitTool, {
             telegramUserId: userId,
             symbol,
@@ -1097,16 +1097,16 @@ U_ID: ${uId.substring(0, 30)}...
           
           orderResults.push({
             accountNumber: account.accountNumber,
-            price: accountPrice.toFixed(8),
+            price: accountPrice.toFixed(6),
             result
           });
         } catch (error: any) {
           logger?.error(`❌ Error placing order for account ${account.accountNumber}`, { error: error.message });
           const errorPrice = basePrice * (1 - 0.001 * index);
-          const roundedErrorPrice = Math.round(errorPrice * 100000000) / 100000000;
+          const truncatedErrorPrice = Math.floor(errorPrice * 1000000) / 1000000;
           orderResults.push({
             accountNumber: account.accountNumber,
-            price: roundedErrorPrice.toFixed(8),
+            price: truncatedErrorPrice.toFixed(6),
             result: `❌ ${error.message}`
           });
         }
