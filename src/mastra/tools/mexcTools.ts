@@ -856,40 +856,25 @@ export const cancelAllOrdersTool = createTool({
             continue;
           }
 
-          // Collect orders that match criteria: NEW/PARTIALLY_FILLED and LIMIT type
-          const ordersToCancel: { symbol: string; orderId: string; status: string; type: string }[] = [];
-          
-          for (const [symbol, orderList] of Object.entries(orders)) {
-            if (!Array.isArray(orderList)) continue;
-            
-            for (const order of orderList) {
-              const status = (order as any).status || (order as any).orderStatus;
-              const type = (order as any).type || (order as any).orderType;
-              
-              logger?.info(`📋 Order found for ${symbol}:`, { status, type });
-              
-              // Filter: only NEW/PARTIALLY_FILLED LIMIT orders (entry orders)
-              if ((status === "NEW" || status === "PARTIALLY_FILLED") && type === "LIMIT") {
-                const orderId = (order as any).orderId || (order as any).id;
-                if (orderId) {
-                  ordersToCancel.push({ symbol, orderId, status, type });
-                }
-              }
+          // Collect all symbols with orders (same as /orders shows)
+          const symbolsWithOrders: string[] = [];
+          for (const [key, orderList] of Object.entries(orders)) {
+            if (Array.isArray(orderList) && orderList.length > 0) {
+              symbolsWithOrders.push(key);
             }
           }
 
-          if (ordersToCancel.length === 0) {
-            results.push(`👤 Аккаунт ${account.accountNumber}: нет лимитных ордеров на вход (NEW/PARTIALLY_FILLED)`);
+          if (symbolsWithOrders.length === 0) {
+            results.push(`👤 Аккаунт ${account.accountNumber}: нет открытых ордеров`);
             continue;
           }
 
-          // Group by symbol and cancel
-          const symbolsToCancel = [...new Set(ordersToCancel.map(o => o.symbol))];
+          // Cancel all orders by symbol
           let cancelledCount = 0;
 
-          for (const symbol of symbolsToCancel) {
+          for (const symbol of symbolsWithOrders) {
             try {
-              logger?.info(`❌ Cancelling limit entry orders for ${symbol}`);
+              logger?.info(`❌ Cancelling all orders for ${symbol}`);
               await client.cancelOrder({ symbol } as any);
               cancelledCount++;
             } catch (error: any) {
@@ -898,7 +883,7 @@ export const cancelAllOrdersTool = createTool({
           }
 
           if (cancelledCount > 0) {
-            results.push(`✅ Аккаунт ${account.accountNumber}: отменено ${ordersToCancel.length} лимитных ордеров на вход (${symbolsToCancel.join(", ")})`);
+            results.push(`✅ Аккаунт ${account.accountNumber}: отменено ордера (${symbolsWithOrders.join(", ")})`);
           } else {
             results.push(`⚠️ Аккаунт ${account.accountNumber}: не удалось отменить ордера`);
           }
