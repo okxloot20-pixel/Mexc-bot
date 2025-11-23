@@ -431,6 +431,7 @@ export const mastra = new Mastra({
                 
                 try {
                   const parsedResponse = JSON.parse(response);
+                  console.log(`📋 Parsed response:`, JSON.stringify(parsedResponse, null, 2).substring(0, 500));
                   if (parsedResponse.type === "keyboard_menu" && parsedResponse.keyboard) {
                     payload.text = parsedResponse.text;
                     payload.reply_markup = {
@@ -438,16 +439,21 @@ export const mastra = new Mastra({
                       resize_keyboard: true,
                       one_time_keyboard: false
                     };
+                    console.log(`✅ Using reply_keyboard`);
                   } else if (parsedResponse.type === "menu" && parsedResponse.keyboard) {
                     payload.text = parsedResponse.text;
                     payload.reply_markup = {
                       inline_keyboard: parsedResponse.keyboard
                     };
+                    console.log(`✅ Using inline_keyboard with structure:`, JSON.stringify(parsedResponse.keyboard, null, 2).substring(0, 300));
                   }
                 } catch (e) {
                   // Not JSON, treat as plain text response
                   payload.parse_mode = "Markdown";
+                  console.log(`📝 Response is plain text, not JSON`);
                 }
+                
+                console.log(`📤 Final payload for Telegram:`, JSON.stringify(payload, null, 2).substring(0, 400));
 
                 logger?.info("📤 [Telegram] Sending request to Telegram API", {
                   url: apiUrl.substring(0, 50) + "...",
