@@ -16,51 +16,43 @@ const commands = [
   },
   {
     command: "register",
-    description: "Зарегистрировать аккаунт MEXC (WEB-UID и прокси)",
+    description: "Регистрация аккаунтов",
   },
   {
     command: "accounts",
-    description: "Показать все зарегистрированные аккаунты",
+    description: "Мои аккаунты",
+  },
+  {
+    command: "lb",
+    description: "LONG лимит по второй цене на продажу (BBO)",
+  },
+  {
+    command: "sb",
+    description: "SHORT лимит по второй цене на покупку (BBO)",
   },
   {
     command: "lm",
-    description: "Открыть маркет LONG позицию (пример: /lm BTC 10 20)",
+    description: "LONG маркет",
   },
   {
     command: "sm",
-    description: "Открыть маркет SHORT позицию (пример: /sm BTC 10 20)",
-  },
-  {
-    command: "l",
-    description: "Открыть лимитный LONG ордер (пример: /l 50000 BTC 10 20)",
-  },
-  {
-    command: "s",
-    description: "Открыть лимитный SHORT ордер (пример: /s 50000 BTC 10 20)",
+    description: "SHORT маркет",
   },
   {
     command: "close",
-    description: "Закрыть позицию (пример: /close BTC 10)",
+    description: "Закрыть позицию по маркету",
+  },
+  {
+    command: "closebs",
+    description: "Закрыть SHORT по второй цене на продажу (BBO)",
   },
   {
     command: "positions",
-    description: "Показать все открытые позиции",
-  },
-  {
-    command: "orders",
-    description: "Показать все открытые ордера",
+    description: "Открытые позиции",
   },
   {
     command: "balance",
-    description: "Показать баланс счета",
-  },
-  {
-    command: "cancel",
-    description: "Отменить ордер (пример: /cancel BTC)",
-  },
-  {
-    command: "settings",
-    description: "Обновить настройки аккаунта (пример: /settings 1 20 10)",
+    description: "Баланс",
   },
 ];
 
