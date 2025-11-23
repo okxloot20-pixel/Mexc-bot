@@ -646,7 +646,13 @@ U_ID: ${uId.substring(0, 30)}...
       logger?.info(`🔴 [SHORT Grid] Starting grid for ${symbol} at base price ${basePrice}`, { accountCount: accounts.length });
       
       // Calculate prices for each account with progressive discount
-      const orderPromises = accounts.map(async (account, index) => {
+      // Use sequential execution with delay to avoid MEXC rate limit (50ms between requests)
+      const orderResults = [];
+      
+      for (let i = 0; i < accounts.length; i++) {
+        const account = accounts[i];
+        const index = i;
+        
         try {
           // Price formula: basePrice * (1 - 0.001 * index)
           // Account 1 (index 0): basePrice * 1 = basePrice
@@ -659,7 +665,8 @@ U_ID: ${uId.substring(0, 30)}...
           logger?.info(`📍 Grid order for account ${account.accountNumber}:`, { 
             index, 
             discountFactor, 
-            accountPrice 
+            accountPrice,
+            position: `${i + 1}/${accounts.length}`
           });
           
           // Execute the order on SPECIFIC account
@@ -672,23 +679,28 @@ U_ID: ${uId.substring(0, 30)}...
             accountNumber: account.accountNumber, // Trade on this specific account only
           });
           
-          return {
+          orderResults.push({
             accountNumber: account.accountNumber,
             price: accountPrice.toFixed(8),
             result
-          };
+          });
         } catch (error: any) {
           logger?.error(`❌ Error placing order for account ${account.accountNumber}`, { error: error.message });
-          return {
+          orderResults.push({
             accountNumber: account.accountNumber,
             price: (basePrice * (1 - 0.001 * index)).toFixed(8),
             result: `❌ ${error.message}`
-          };
+          });
         }
-      });
+        
+        // Add 50ms delay between requests to avoid MEXC rate limit (except after last order)
+        if (i < accounts.length - 1) {
+          logger?.info(`⏱️ Delaying 50ms before next order...`);
+          await new Promise(resolve => setTimeout(resolve, 50));
+        }
+      }
       
-      // Wait for all orders to complete
-      const orderResults = await Promise.all(orderPromises);
+      logger?.info(`⏳ Queue completed, all ${accounts.length} orders processed`);
       
       // Format response with all orders
       let response = `🔴 *SHORT Сетка запущена*\n\n`;
