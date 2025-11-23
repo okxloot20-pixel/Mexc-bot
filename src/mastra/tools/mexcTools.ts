@@ -856,25 +856,24 @@ export const cancelAllOrdersTool = createTool({
             continue;
           }
 
-          // DEBUG: Show what we got
+          // DEBUG: Show FULL order structure
+          logger?.info(`📊 DEBUG: Full orders object:`, { ordersObj: JSON.stringify(orders) });
+          
           const allOrdersList: any[] = [];
           for (const [key, orderList] of Object.entries(orders)) {
             if (Array.isArray(orderList)) {
-              allOrdersList.push(...orderList.map((o: any) => ({
-                symbol: key,
-                type: o.type,
-                status: o.status,
-                orderId: o.orderId || o.id
-              })));
+              for (const order of orderList) {
+                logger?.info(`📋 DEBUG: Full order for ${key}:`, { order: JSON.stringify(order) });
+                allOrdersList.push({
+                  symbol: key,
+                  fullOrder: order
+                });
+              }
             }
           }
           
-          logger?.info(`📊 DEBUG /co account ${account.accountNumber}: найдено ордеров: ${allOrdersList.length}`, {
-            orders: allOrdersList.map((o: any) => `${o.symbol} | type:${o.type} | status:${o.status}`).join("; ")
-          });
-          
           results.push(`📊 DEBUG Аккаунт ${account.accountNumber}: найдено ${allOrdersList.length} ордеров\n${
-            allOrdersList.map((o: any) => `${o.symbol} | ${o.type} | ${o.status}`).join("\n")
+            allOrdersList.map((o: any) => `${o.symbol}:\n${JSON.stringify(o.fullOrder)}`).join("\n")
           }`);
 
           // Filter: LIMIT/LIMIT_MAKER + NEW/PARTIALLY_FILLED
