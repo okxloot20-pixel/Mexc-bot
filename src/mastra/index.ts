@@ -363,28 +363,32 @@ export const mastra = new Mastra({
                   response = await parseAndExecuteCommand("/start", userId, mastra);
                 } else if (callbackData.startsWith("toggle_account_")) {
                   // Handle account toggle via callback
-                  const accountNumber = parseInt(callbackData.split("_")[2]);
-                  console.log(`🔘 Toggle account callback: accountNumber=${accountNumber}, userId=${userId}`);
-                  logger?.info("🔘 [Telegram] Toggle account callback", { accountNumber, userId });
+                  const accountId = parseInt(callbackData.split("_")[2]);
+                  console.log(`🔘 Toggle account callback: accountId=${accountId}, userId=${userId}`);
+                  logger?.info("🔘 [Telegram] Toggle account callback", { accountId, userId });
                   
                   try {
                     // Get current account status from DB
                     const account = await db.query.mexcAccounts.findFirst({
                       where: and(
                         eq(mexcAccounts.telegramUserId, userId),
-                        eq(mexcAccounts.accountNumber, accountNumber)
+                        eq(mexcAccounts.id, accountId)
                       ),
                     });
                     
                     if (account) {
-                      // Send the current status so agent can toggle it properly
-                      const statusPrefix = account.isActive ? "✅" : "❌";
-                      const simulatedMessage = `${statusPrefix} ${accountNumber}`;
-                      console.log(`📝 Simulated message: "${simulatedMessage}"`);
-                      response = await parseAndExecuteCommand(simulatedMessage, userId, mastra);
-                      console.log(`✅ Response from parseAndExecuteCommand: ${response.substring(0, 100)}...`);
+                      // Toggle the account directly
+                      const newStatus = !account.isActive;
+                      await db.update(mexcAccounts)
+                        .set({ isActive: newStatus })
+                        .where(eq(mexcAccounts.id, account.id));
+                      
+                      console.log(`✅ Toggled account ${account.accountNumber}: ${newStatus ? "ON" : "OFF"}`);
+                      
+                      // Return the updated accounts list
+                      response = await parseAndExecuteCommand("/accounts", userId, mastra);
                     } else {
-                      response = `❌ Аккаунт #${accountNumber} не найден`;
+                      response = `❌ Аккаунт #${accountId} не найден`;
                     }
                   } catch (error: any) {
                     console.log(`❌ Error in toggle callback: ${error.message}`);

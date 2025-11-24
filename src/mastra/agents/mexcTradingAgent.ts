@@ -663,7 +663,10 @@ U_ID: ${uId.substring(0, 30)}...
   // Handle toggle account callback
   if (cmd.startsWith("toggle_account_")) {
     const accountId = parseInt(cmd.replace("toggle_account_", ""));
+    const logger = globalMastra?.getLogger();
+    logger?.info(`🔘 [Toggle] Starting toggle for accountId=${accountId}, userId=${userId}`);
     try {
+      logger?.info(`🔘 [Toggle] Looking up account with id=${accountId} and telegram_user_id=${userId}`);
       const account = await db.query.mexcAccounts.findFirst({
         where: and(
           eq(mexcAccounts.id, accountId),
@@ -671,7 +674,10 @@ U_ID: ${uId.substring(0, 30)}...
         ),
       });
       
+      logger?.info(`🔘 [Toggle] Query result:`, { found: !!account, account });
+      
       if (!account) {
+        logger?.warn(`🔘 [Toggle] Account not found for id=${accountId}, userId=${userId}`);
         return `❌ Аккаунт не найден`;
       }
       
@@ -1456,7 +1462,7 @@ U_ID: ${uId.substring(0, 30)}...
         const status = acc.isActive ? "✅" : "❌";
         return {
           text: `${status} ${acc.accountNumber}`,
-          callback_data: `toggle_account_${acc.accountNumber}`
+          callback_data: `toggle_account_${acc.id}`
         };
       });
       
@@ -1501,22 +1507,22 @@ U_ID: ${uId.substring(0, 30)}...
     });
   }
   
-  // Handle account toggle (format: "✅ 458" or "❌ 458")
+  // Handle account toggle (old legacy handler - can be removed if /accounts is used everywhere)
   const accountToggleMatch = message.match(/^(✅|❌)\s+(\d+)$/);
   if (accountToggleMatch) {
     try {
-      const accountNumber = parseInt(accountToggleMatch[2]);
+      const accountId = parseInt(accountToggleMatch[2]);
       const currentStatus = accountToggleMatch[1] === "✅";
       
       const account = await db.query.mexcAccounts.findFirst({
         where: and(
           eq(mexcAccounts.telegramUserId, userId),
-          eq(mexcAccounts.accountNumber, accountNumber)
+          eq(mexcAccounts.id, accountId)
         ),
       });
       
       if (!account) {
-        return `❌ Аккаунт #${accountNumber} не найден`;
+        return `❌ Аккаунт #${accountId} не найден`;
       }
       
       // Toggle the account status
@@ -1525,7 +1531,7 @@ U_ID: ${uId.substring(0, 30)}...
         .where(eq(mexcAccounts.id, account.id));
       
       const newStatus = !currentStatus ? "✅ включён" : "❌ выключен";
-      const resultMsg = `📝 *Аккаунт #${accountNumber} ${newStatus}*`;
+      const resultMsg = `📝 *Аккаунт #${account.accountNumber} ${newStatus}*`;
       
       // Show updated menu
       const accounts = await db.query.mexcAccounts.findMany({
@@ -1536,7 +1542,7 @@ U_ID: ${uId.substring(0, 30)}...
         const status = acc.isActive ? "✅" : "❌";
         return {
           text: `${status} ${acc.accountNumber}`,
-          callback_data: `toggle_account_${acc.accountNumber}`
+          callback_data: `toggle_account_${acc.id}`
         };
       });
       
