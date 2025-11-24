@@ -57,7 +57,9 @@ A `telegramTradingWorkflow` orchestrates the trading pipeline, handling signal r
 - ✅ Hysteresis prevents re-entry until spread < 7%
 - ✅ Database schema updated with spread_monitoring_enabled flag and spread_monitoring_state table
 - ✅ Removed unstable DEBUG commands that interfered with message processing
-- ✅ Bot fully restored to stable operation with all normal commands working
+- ✅ Fixed callback_query (button click) handling - was only processing text messages
+- ✅ Added support for both `keyboard_menu` (reply_keyboard) and `menu` (inline_keyboard) types in callbacks
+- ✅ Bot fully restored to stable operation with all normal commands and buttons working
 
 # External Dependencies
 

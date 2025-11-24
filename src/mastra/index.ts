@@ -443,15 +443,23 @@ export const mastra = new Mastra({
                     console.log(`📋 Parsed response type: ${parsedResponse.type}`);
                     console.log(`📋 Parsed response keyboard rows: ${parsedResponse.keyboard?.length || 0}`);
                     logger?.info("📋 [Telegram] Parsed response", { type: parsedResponse.type, hasKeyboard: !!parsedResponse.keyboard, keyboardRows: parsedResponse.keyboard?.length });
-                    if (parsedResponse.type === "menu" && parsedResponse.keyboard) {
+                    if ((parsedResponse.type === "menu" || parsedResponse.type === "keyboard_menu") && parsedResponse.keyboard) {
                       editPayload.text = parsedResponse.text;
-                      editPayload.reply_markup = {
-                        inline_keyboard: parsedResponse.keyboard
-                      };
+                      if (parsedResponse.type === "menu") {
+                        editPayload.reply_markup = {
+                          inline_keyboard: parsedResponse.keyboard
+                        };
+                      } else if (parsedResponse.type === "keyboard_menu") {
+                        editPayload.reply_markup = {
+                          keyboard: parsedResponse.keyboard,
+                          resize_keyboard: true,
+                          one_time_keyboard: false
+                        };
+                      }
                       delete editPayload.parse_mode;
-                      console.log(`🎯 Setting inline_keyboard with ${parsedResponse.keyboard.length} rows`);
+                      console.log(`🎯 Setting keyboard with ${parsedResponse.keyboard.length} rows`);
                       console.log(`🎯 First row buttons: ${JSON.stringify(parsedResponse.keyboard[0], null, 2)}`);
-                      logger?.info("🎯 [Telegram] Setting inline_keyboard", { rows: parsedResponse.keyboard.length });
+                      logger?.info("🎯 [Telegram] Setting keyboard", { type: parsedResponse.type, rows: parsedResponse.keyboard.length });
                     }
                   } catch (e) {
                     editPayload.parse_mode = "Markdown";
