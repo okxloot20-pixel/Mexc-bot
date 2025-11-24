@@ -77,16 +77,21 @@ The bot uses **direct command parsing** with **real MEXC API calls**:
 - ✅ **Account management UI** (November 24, 2025):
   - Status indicators: 🟢 (active) / ❌ (inactive) for each account
   - Toggle account active/inactive by clicking button ✅ FIXED - buttons now work correctly
-  - Delete button with confirmation menu (list of accounts to delete)
+  - Delete button with confirmation menu (list of accounts to delete) ✅ FIXED - deletion works
   - Compact layout: 4 buttons per row (`🟢 #474 | ❌ #466 | 🟢 #473 | 🟢 #472`)
   - Minimal interface - only header and buttons, no account details text
   - Callback_query support for button interactions
 
-**Bug Fix (November 24, 2025):**
+**Bug Fixes (November 24, 2025):**
 - Fixed toggle account buttons not working - issue was webhook handler looking up by `accountNumber` instead of database `id`
 - Changed webhook handler to directly toggle accounts instead of delegating to legacy handler
+- Added webhook handlers for `delete_account_menu` and `confirm_delete_*` callbacks
 - Updated all account menu handlers to use database ID (not account number) in callback_data
-- Verified toggle works both ways: OFF→ON and ON→OFF with proper state updates
+- Verified full workflow:
+  - Toggle works both ways: OFF→ON and ON→OFF with proper state updates
+  - Delete menu shows all accounts with delete buttons
+  - Delete confirmation removes account from database
+  - Account list refreshes automatically after deletion
 
 ## Durable Execution with Inngest
 
