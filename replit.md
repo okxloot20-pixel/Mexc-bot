@@ -14,7 +14,7 @@ The bot directly parses Telegram commands and executes them via the MEXC API for
 
 ## Telegram Webhook Integration
 
-The bot integrates with Telegram via a webhook endpoint `/webhooks/telegram/action`, ensuring real-time command processing and responses (typically under 200ms). It features robust command parsing, chat validation, and comprehensive account management UI with inline keyboard buttons for toggling account status and deletion. Auto commands are also supported, allowing users to store automated trading instructions.
+The bot integrates with Telegram via a webhook endpoint `/webhooks/telegram/action`, ensuring real-time command processing and responses (typically under 200ms). It features robust command parsing, chat validation, and comprehensive account management UI with inline keyboard buttons for toggling account status and deletion. Auto commands are fully supported with `/auto add SYMBOL dex_address` for adding and "🗑️ Удалить" button for removing saved automated trading instructions.
 
 ## Durable Execution with Inngest
 

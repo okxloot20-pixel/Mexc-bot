@@ -415,9 +415,11 @@ export const mastra = new Mastra({
                   console.log(`📋 Back to accounts`);
                   response = await parseAndExecuteCommand("/accounts", userId, mastra);
                 } else if (callbackData === "fast" || callbackData === "show_fast" || callbackData === "add_coin" || callbackData === "delete_fast_menu" || callbackData === "show_account_menu" || callbackData === "show_fast_menu" ||
-                           callbackData.startsWith("fast_cmd_") || callbackData.startsWith("delete_fast_cmd_") || callbackData.startsWith("delete_fast_confirm_")) {
-                  // Handle fast command callbacks and menu navigation
-                  console.log(`⚡ Fast callback: ${callbackData}`);
+                           callbackData.startsWith("fast_cmd_") || callbackData.startsWith("delete_fast_cmd_") || callbackData.startsWith("delete_fast_confirm_") ||
+                           callbackData === "show_auto" || callbackData === "show_auto_menu" || callbackData === "add_auto_coin" || callbackData === "delete_auto_menu" ||
+                           callbackData.startsWith("auto_cmd_") || callbackData.startsWith("delete_auto_confirm_")) {
+                  // Handle fast/auto command callbacks and menu navigation
+                  console.log(`⚡ Fast/Auto callback: ${callbackData}`);
                   response = await parseAndExecuteCommand(callbackData, userId, mastra);
                 } else {
                   response = "📨 Неизвестная команда";
