@@ -3,7 +3,7 @@ import { Memory } from "@mastra/memory";
 import { sharedPostgresStorage } from "../storage";
 import { createOpenAI } from "@ai-sdk/openai";
 import { db } from "../storage/db";
-import { mexcAccounts, fastCommands } from "../storage/schema";
+import { mexcAccounts, fastCommands, autoCommands } from "../storage/schema";
 import { eq, and } from "drizzle-orm";
 import {
   openLongMarketTool,
@@ -1039,6 +1039,294 @@ U_ID: ${uId.substring(0, 30)}...
   
   if (cmd === "show_fast") {
     return parseAndExecuteCommand("/fast", userId, mastra);
+  }
+  
+  // Handle auto commands - /auto command to show saved auto commands
+  if (cmd === "/auto" || cmd === "⚙️ auto") {
+    const logger = globalMastra?.getLogger();
+    logger?.info("🤖 [AUTO] Loading auto commands for user:", userId);
+    
+    try {
+      const result = await db
+        .select()
+        .from(autoCommands)
+        .where(eq(autoCommands.telegramUserId, userId))
+        .limit(1);
+      
+      const existing = result[0];
+      let commands: any[] = [];
+      if (existing) {
+        try {
+          commands = JSON.parse(existing.commands || "[]");
+        } catch (e) {
+          commands = [];
+        }
+      }
+      
+      let text = `🔄 Автоматические команды\n\n`;
+      const keyboard: any[][] = [];
+      
+      if (commands.length > 0) {
+        commands.forEach((cmd: any, idx: number) => {
+          keyboard.push([{
+            text: `${cmd.symbol} → ${cmd.dex.substring(0, 8)}...`,
+            callback_data: `auto_cmd_${idx}`
+          }]);
+        });
+        text += `Нажми кнопку для просмотра деталей\n`;
+      } else {
+        text += `Нет сохранённых команд\n\n`;
+      }
+      
+      if (commands.length > 0) {
+        keyboard.push([{
+          text: "🗑️ Удалить",
+          callback_data: "delete_auto_menu"
+        }]);
+      }
+      
+      keyboard.push([{
+        text: "➕ Добавить команду",
+        callback_data: "add_auto_coin"
+      }]);
+      
+      keyboard.push([{
+        text: "← Назад",
+        callback_data: "show_auto_menu"
+      }]);
+      
+      logger?.info("✅ [AUTO] Generated auto commands menu with", commands.length, "commands");
+      
+      return JSON.stringify({
+        type: "menu",
+        text: text,
+        keyboard: keyboard
+      });
+    } catch (error: any) {
+      const logger = globalMastra?.getLogger();
+      logger?.error("❌ [AUTO] Error loading commands:", error.message);
+      return `❌ Ошибка: ${error.message}`;
+    }
+  }
+  
+  // Handle auto command execution - show details
+  if (cmd.startsWith("auto_cmd_")) {
+    const indexStr = cmd.replace("auto_cmd_", "");
+    const index = parseInt(indexStr);
+    
+    try {
+      const result = await db
+        .select()
+        .from(autoCommands)
+        .where(eq(autoCommands.telegramUserId, userId))
+        .limit(1);
+      
+      const existing = result[0];
+      if (!existing) {
+        return `❌ Команды не найдены`;
+      }
+      
+      let commands: any[] = [];
+      try {
+        commands = JSON.parse(existing.commands || "[]");
+      } catch (e) {
+        commands = [];
+      }
+      
+      if (index >= 0 && index < commands.length) {
+        const cmd = commands[index];
+        return `📌 *Автоматическая команда*
+
+Монета: *${cmd.symbol}*
+DEX: \`${cmd.dex}\`
+
+Эта команда используется для автоматических действий`;
+      } else {
+        return `❌ Команда не найдена`;
+      }
+    } catch (error: any) {
+      return `❌ Ошибка: ${error.message}`;
+    }
+  }
+  
+  // Handle add auto command - /auto add SYMBOL dex
+  if (cmd.startsWith("/auto add ")) {
+    const parts = message.substring(10).trim().split(/\s+/);
+    const symbol = parts[0]?.toUpperCase();
+    const dex = parts[1];
+    
+    if (!symbol || !dex) {
+      return `✏️ Отправь команду в формате:\n\n/auto add SYMBOL dex_address\n\nПример:\n/auto add WOJAKONX fdry5i5kuadz1ik8gps26qjj9rw9mpufxmeggc2hnsp7`;
+    }
+    
+    try {
+      const result = await db
+        .select()
+        .from(autoCommands)
+        .where(eq(autoCommands.telegramUserId, userId))
+        .limit(1);
+      
+      const existing = result[0];
+      
+      let commands: any[] = [];
+      if (existing) {
+        try {
+          commands = JSON.parse(existing.commands || "[]");
+        } catch (e) {
+          commands = [];
+        }
+      }
+      
+      // Check for duplicate
+      const duplicate = commands.find((c: any) => c.symbol === symbol && c.dex === dex);
+      if (duplicate) {
+        return `⚠️ Эта команда уже сохранена`;
+      }
+      
+      // Add new command
+      commands.push({ symbol, dex });
+      
+      const commandsJson = JSON.stringify(commands);
+      
+      if (existing) {
+        await db.update(autoCommands)
+          .set({ commands: commandsJson, updatedAt: new Date() })
+          .where(eq(autoCommands.telegramUserId, userId));
+      } else {
+        await db.insert(autoCommands).values({
+          telegramUserId: userId,
+          commands: commandsJson,
+        });
+      }
+      
+      const logger = globalMastra?.getLogger();
+      logger?.info("✅ [AUTO] Added command:", symbol, dex);
+      
+      return `✅ Команда сохранена
+
+Монета: *${symbol}*
+DEX: \`${dex}\`
+
+Теперь используй /auto для просмотра`;
+    } catch (error: any) {
+      return `❌ Ошибка при сохранении: ${error.message}`;
+    }
+  }
+  
+  if (cmd === "add_auto_coin") {
+    return `✏️ Отправь команду в формате:\n\n/auto add SYMBOL dex_address\n\nПример:\n/auto add WOJAKONX fdry5i5kuadz1ik8gps26qjj9rw9mpufxmeggc2hnsp7`;
+  }
+  
+  if (cmd === "delete_auto_menu") {
+    try {
+      const result = await db
+        .select()
+        .from(autoCommands)
+        .where(eq(autoCommands.telegramUserId, userId))
+        .limit(1);
+      
+      const existing = result[0];
+      if (!existing) {
+        return `❌ Команды не найдены`;
+      }
+      
+      let commands: any[] = [];
+      try {
+        commands = JSON.parse(existing.commands || "[]");
+      } catch (e) {
+        commands = [];
+      }
+      
+      if (commands.length === 0) {
+        return `❌ Нет команд для удаления`;
+      }
+      
+      let text = `🗑️ Выбери команду для удаления:\n\n`;
+      const keyboard: any[][] = [];
+      
+      commands.forEach((cmd: any, idx: number) => {
+        keyboard.push([{
+          text: `❌ ${cmd.symbol}`,
+          callback_data: `delete_auto_confirm_${idx}`
+        }]);
+      });
+      
+      keyboard.push([{
+        text: "← Назад",
+        callback_data: "show_auto"
+      }]);
+      
+      return JSON.stringify({
+        type: "menu",
+        text: text,
+        keyboard: keyboard
+      });
+    } catch (error: any) {
+      return `❌ Ошибка: ${error.message}`;
+    }
+  }
+  
+  if (cmd.startsWith("delete_auto_confirm_")) {
+    const indexStr = cmd.replace("delete_auto_confirm_", "");
+    const index = parseInt(indexStr);
+    
+    try {
+      const result = await db
+        .select()
+        .from(autoCommands)
+        .where(eq(autoCommands.telegramUserId, userId))
+        .limit(1);
+      
+      const existing = result[0];
+      if (!existing) {
+        return `❌ Команды не найдены`;
+      }
+      
+      let commands: any[] = [];
+      try {
+        commands = JSON.parse(existing.commands || "[]");
+      } catch (e) {
+        commands = [];
+      }
+      
+      if (index >= 0 && index < commands.length) {
+        const deletedCmd = commands[index];
+        commands.splice(index, 1);
+        
+        const commandsJson = JSON.stringify(commands);
+        await db.update(autoCommands)
+          .set({ commands: commandsJson, updatedAt: new Date() })
+          .where(eq(autoCommands.telegramUserId, userId));
+        
+        const logger = globalMastra?.getLogger();
+        logger?.info("✅ [AUTO] Deleted command:", deletedCmd.symbol);
+        
+        return `✅ Команда удалена
+
+${deletedCmd.symbol} больше не сохранена`;
+      } else {
+        return `❌ Команда не найдена`;
+      }
+    } catch (error: any) {
+      return `❌ Ошибка при удалении: ${error.message}`;
+    }
+  }
+  
+  if (cmd === "show_auto_menu") {
+    return JSON.stringify({
+      type: "keyboard_menu",
+      text: "🤖 *Mexc Futures Trading Bot*",
+      keyboard: [
+        ["🚀 Начало", "📊 Позиции"],
+        ["👤 Аккаунт", "📦 Ордеры"],
+        ["💰 Баланс", "⚡ Fast"],
+        ["🚨 Сигналы", "⚙️ Настройки"]
+      ]
+    });
+  }
+  
+  if (cmd === "show_auto") {
+    return parseAndExecuteCommand("/auto", userId, mastra);
   }
   
   // Open LONG limit at second ask price from orderbook (BBO) - from FUTURES API
