@@ -234,6 +234,21 @@ export const mastra = new Mastra({
               console.log("🔍 [TELEGRAM WEBHOOK RECEIVED]", JSON.stringify(payload, null, 2));
               logger?.info("🔍 [Telegram] Full payload received", JSON.stringify(payload, null, 2));
               
+              // Auto-detect and update webhook if needed
+              if (!detectedWebhookUrl) {
+                const detectedUrl = autoDetectWebhookUrl(c.req.url);
+                if (detectedUrl && detectedUrl !== "http://localhost:5000/webhooks/telegram/action") {
+                  console.log(`🔄 Auto-detected production webhook URL: ${detectedUrl}`);
+                  detectedWebhookUrl = detectedUrl;
+                  // Silently update webhook if this is production
+                  setTimeout(() => {
+                    setTelegramWebhook(detectedUrl).catch(err => 
+                      logger?.warn("Auto-webhook update failed:", err)
+                    );
+                  }, 100);
+                }
+              }
+              
               // Handle button clicks (callback_query)
               if (payload.callback_query) {
                 const callbackData = payload.callback_query.data;
@@ -478,10 +493,12 @@ export const mastra = new Mastra({
         }),
 });
 
-// Set Telegram webhook to production URL
-async function setTelegramWebhook() {
+// Auto-detect and set Telegram webhook
+let detectedWebhookUrl: string | null = null;
+
+async function setTelegramWebhook(urlOverride?: string) {
   const botToken = process.env.TELEGRAM_BOT_TOKEN;
-  const webhookUrl = process.env.TELEGRAM_WEBHOOK_URL;
+  let webhookUrl = urlOverride || process.env.TELEGRAM_WEBHOOK_URL || detectedWebhookUrl;
   
   if (!botToken) {
     console.log("⚠️ TELEGRAM_BOT_TOKEN not set, skipping webhook setup");
@@ -489,7 +506,7 @@ async function setTelegramWebhook() {
   }
   
   if (!webhookUrl) {
-    console.log("⚠️ TELEGRAM_WEBHOOK_URL not set, skipping webhook setup");
+    console.log("⚠️ No webhook URL available, will auto-detect from first request");
     return;
   }
   
@@ -508,11 +525,24 @@ async function setTelegramWebhook() {
     
     if (data.ok) {
       console.log("✅ Telegram webhook set successfully!");
+      detectedWebhookUrl = webhookUrl;
     } else {
       console.log("❌ Failed to set Telegram webhook:", data.description);
     }
   } catch (error: any) {
     console.log("⚠️ Error setting Telegram webhook:", error.message);
+  }
+}
+
+// Auto-detect webhook URL from incoming request
+function autoDetectWebhookUrl(requestUrl: string): string {
+  try {
+    const url = new URL(requestUrl);
+    // Construct webhook URL: protocol + host + /webhooks/telegram/action
+    const webhookUrl = `${url.protocol}//${url.host}/webhooks/telegram/action`;
+    return webhookUrl;
+  } catch {
+    return "";
   }
 }
 
