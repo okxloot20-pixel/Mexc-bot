@@ -615,15 +615,11 @@ U_ID: ${uId.substring(0, 30)}...
 Используйте /register для добавления`;
       }
       
-      let text = `📊 Ваши аккаунты MEXC\n\n`;
+      let text = `📊 Ваши аккаунты MEXC`;
       const keyboard: any[][] = [];
       let currentRow: any[] = [];
       
       accounts.forEach((acc, idx) => {
-        text += `${acc.isActive ? "🟢" : "❌"} #${acc.accountNumber}\n`;
-        if (acc.proxy) text += `   Прокси: ${acc.proxy}\n`;
-        text += `   Рычаг: ${acc.defaultLeverage}x | Размер: ${acc.defaultSize}\n\n`;
-        
         // Create button with status emoji and account number
         const buttonText = `${acc.isActive ? "🟢" : "❌"} #${acc.accountNumber}`;
         currentRow.push({
@@ -653,8 +649,6 @@ U_ID: ${uId.substring(0, 30)}...
         text: "← Назад",
         callback_data: "back_to_menu"
       }]);
-      
-      text += `Нажимай на кнопку чтобы включить/выключить аккаунт.`;
       
       return JSON.stringify({
         type: "menu",

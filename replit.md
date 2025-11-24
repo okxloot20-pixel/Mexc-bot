@@ -79,6 +79,7 @@ The bot uses **direct command parsing** with **real MEXC API calls**:
   - Toggle account active/inactive by clicking button
   - Delete button with confirmation menu (list of accounts to delete)
   - Compact layout: 4 buttons per row (`🟢 #474 | ❌ #466 | 🟢 #473 | 🟢 #472`)
+  - Minimal interface - only header and buttons, no account details text
   - Callback_query support for button interactions
 
 ## Durable Execution with Inngest
