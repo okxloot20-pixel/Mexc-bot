@@ -41,40 +41,16 @@ export function registerTelegramTrigger({
 
           logger?.info("📝 [Telegram] payload", payload);
 
-          // Handle both text messages and callback_query (button clicks)
-          let userName = "unknown";
-          let message = "";
-          let telegramUserId = "";
-          let chatId = 0;
-
-          if (payload.message) {
-            // Text message
-            userName = payload.message?.from?.username || "unknown";
-            message = payload.message?.text || "";
-            telegramUserId = String(payload.message?.from?.id || "");
-            chatId = Number(payload.message?.chat?.id || 0);
-            logger?.debug("📨 Processing text message");
-          } else if (payload.callback_query) {
-            // Button click
-            userName = payload.callback_query?.from?.username || "unknown";
-            message = payload.callback_query?.data || "";
-            telegramUserId = String(payload.callback_query?.from?.id || "");
-            chatId = Number(payload.callback_query?.message?.chat?.id || 0);
-            logger?.debug("📨 Processing callback_query (button click):", { data: message });
-          }
-
-          if (message && telegramUserId) {
-            await handler(mastra, {
-              type: triggerType,
-              params: {
-                userName,
-                message,
-                telegramUserId,
-                chatId,
-              },
-              payload,
-            } as TriggerInfoTelegramOnNewMessage);
-          }
+          await handler(mastra, {
+            type: triggerType,
+            params: {
+              userName: payload.message?.from?.username || "unknown",
+              message: payload.message?.text || "",
+              telegramUserId: String(payload.message?.from?.id || ""),
+              chatId: Number(payload.message?.chat?.id || 0),
+            },
+            payload,
+          } as TriggerInfoTelegramOnNewMessage);
 
           return c.text("OK", 200);
         } catch (error) {
