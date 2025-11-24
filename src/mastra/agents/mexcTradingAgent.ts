@@ -615,7 +615,7 @@ U_ID: ${uId.substring(0, 30)}...
 Используйте /register для добавления`;
       }
       
-      let text = `📊 Ваши аккаунты:\n\n`;
+      let text = `📊 Ваши аккаунты MEXC\n\n`;
       const keyboard: any[][] = [];
       let currentRow: any[] = [];
       
@@ -628,11 +628,11 @@ U_ID: ${uId.substring(0, 30)}...
         const buttonText = `${acc.isActive ? "🟢" : "❌"} #${acc.accountNumber}`;
         currentRow.push({
           text: buttonText,
-          callback_data: `delete_account_${acc.id}`
+          callback_data: `toggle_account_${acc.id}`
         });
         
-        // 3 buttons per row for compact display
-        if (currentRow.length === 3) {
+        // 4 buttons per row for compact display
+        if (currentRow.length === 4) {
           keyboard.push(currentRow);
           currentRow = [];
         }
@@ -643,10 +643,18 @@ U_ID: ${uId.substring(0, 30)}...
         keyboard.push(currentRow);
       }
       
+      // Add delete and back buttons
+      keyboard.push([{
+        text: "🗑️ Удалить",
+        callback_data: "delete_account_menu"
+      }]);
+      
       keyboard.push([{
         text: "← Назад",
         callback_data: "back_to_menu"
       }]);
+      
+      text += `Нажимай на кнопку чтобы включить/выключить аккаунт.`;
       
       return JSON.stringify({
         type: "menu",
@@ -658,11 +666,80 @@ U_ID: ${uId.substring(0, 30)}...
     }
   }
   
-  // Handle delete account callback
-  if (cmd.startsWith("delete_account_")) {
-    const accountId = parseInt(cmd.replace("delete_account_", ""));
+  // Handle toggle account callback
+  if (cmd.startsWith("toggle_account_")) {
+    const accountId = parseInt(cmd.replace("toggle_account_", ""));
     try {
-      // Verify account belongs to user before deleting
+      const account = await db.query.mexcAccounts.findFirst({
+        where: and(
+          eq(mexcAccounts.id, accountId),
+          eq(mexcAccounts.telegramUserId, userId)
+        ),
+      });
+      
+      if (!account) {
+        return `❌ Аккаунт не найден`;
+      }
+      
+      // Toggle active status
+      const newStatus = !account.isActive;
+      await db.update(mexcAccounts)
+        .set({ isActive: newStatus })
+        .where(eq(mexcAccounts.id, accountId));
+      
+      return JSON.stringify({
+        type: "menu",
+        text: `✅ Аккаунт #${account.accountNumber} теперь ${newStatus ? "активен 🟢" : "отключен ❌"}\n\nВсе торговые команды выполняются только на активных аккаунтах.`,
+        keyboard: [[{
+          text: `📋 Вернуться к аккаунтам`,
+          callback_data: `accounts`
+        }]]
+      });
+    } catch (error: any) {
+      return `❌ Ошибка: ${error.message}`;
+    }
+  }
+  
+  // Handle delete account menu
+  if (cmd === "delete_account_menu") {
+    try {
+      const accounts = await db.query.mexcAccounts.findMany({
+        where: eq(mexcAccounts.telegramUserId, userId),
+      });
+      
+      if (accounts.length === 0) {
+        return `❌ Нет аккаунтов для удаления`;
+      }
+      
+      let text = `🗑️ Выбери аккаунт для удаления:\n\n`;
+      const keyboard: any[][] = [];
+      
+      accounts.forEach((acc) => {
+        keyboard.push([{
+          text: `❌ Удалить #${acc.accountNumber}`,
+          callback_data: `confirm_delete_${acc.id}`
+        }]);
+      });
+      
+      keyboard.push([{
+        text: "← Назад",
+        callback_data: "accounts"
+      }]);
+      
+      return JSON.stringify({
+        type: "menu",
+        text: text,
+        keyboard: keyboard
+      });
+    } catch (error: any) {
+      return `❌ Ошибка: ${error.message}`;
+    }
+  }
+  
+  // Handle confirm delete account
+  if (cmd.startsWith("confirm_delete_")) {
+    const accountId = parseInt(cmd.replace("confirm_delete_", ""));
+    try {
       const account = await db.query.mexcAccounts.findFirst({
         where: and(
           eq(mexcAccounts.id, accountId),
@@ -679,7 +756,7 @@ U_ID: ${uId.substring(0, 30)}...
       
       return JSON.stringify({
         type: "menu",
-        text: `✅ Аккаунт #${account.accountNumber} удалён`,
+        text: `✅ Аккаунт #${account.accountNumber} успешно удалён`,
         keyboard: [[{
           text: `📋 Вернуться к аккаунтам`,
           callback_data: `accounts`

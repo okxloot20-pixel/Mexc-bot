@@ -250,8 +250,9 @@ export const mastra = new Mastra({
                 const callbackData = payload.callback_query.data;
                 const callbackQueryId = payload.callback_query.id;
                 const userId = String(payload.callback_query.from.id);
-                const chatId = payload.callback_query.message.chat.id;
-                const messageId = payload.callback_query.message.message_id;
+                // Get chatId from message or use userId as fallback (Telegram sends message with callback_query)
+                const chatId = payload.callback_query.message?.chat?.id || payload.callback_query.from.id;
+                const messageId = payload.callback_query.message?.message_id;
                 
                 // 🔒 Check if user is allowed
                 if (!ALLOWED_USERS.includes(userId)) {

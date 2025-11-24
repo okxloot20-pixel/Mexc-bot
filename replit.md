@@ -74,7 +74,12 @@ The bot uses **direct command parsing** with **real MEXC API calls**:
 - ✅ Real MEXC API integration using u_id from cookies (November 22, 2025)
 - ✅ Full support for all trading commands with optional parameters
 - ✅ u_id остаётся валиден и не истекает
-- ✅ **Fixed account display UI** (November 24, 2025) - Short button text (🟢 #465 or ❌ #466) with 3 buttons per row to prevent empty squares when many accounts
+- ✅ **Account management UI** (November 24, 2025):
+  - Status indicators: 🟢 (active) / ❌ (inactive) for each account
+  - Toggle account active/inactive by clicking button
+  - Delete button with confirmation menu (list of accounts to delete)
+  - Compact layout: 4 buttons per row, no empty squares
+  - Callback_query support for button interactions
 
 ## Durable Execution with Inngest
 
