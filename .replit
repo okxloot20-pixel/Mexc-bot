@@ -75,3 +75,8 @@ waitForPort = 3000
 
 [workflows.workflow.metadata]
 outputType = "automations"
+
+[userenv]
+
+[userenv.shared]
+TELEGRAM_WEBHOOK_URL = "https://e78e0794-a7b9-4eb7-91fc-56aa86108949-00-7aa5pyjb3lka.worf.replit.dev/webhooks/telegram/action"

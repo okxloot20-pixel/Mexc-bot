@@ -58,11 +58,14 @@ A `telegramTradingWorkflow` orchestrates the trading pipeline, handling signal r
 - ✅ Database schema updated with spread_monitoring_enabled flag and spread_monitoring_state table
 - ⚠️ Removed unstable DEBUG commands that interfered with message processing
 - ✅ **CRITICAL FIX:** Webhook URL was pointing to Inngest instead of Mastra endpoint
+- ✅ **CRITICAL FIX v2:** Webhook not set on production - added auto-detection and TELEGRAM_WEBHOOK_URL env var
 - ✅ Fixed webhook URL to: `https://e78e0794-a7b9-4eb7-91fc-56aa86108949-00-7aa5pyjb3lka.worf.replit.dev/webhooks/telegram/action`
 - ✅ Restored callback_query (button click) handling without conflicts
 - ✅ Bot fully STABLE: All text commands work + Button menus work
 - ✅ All trading commands work: /start, /balance, /positions, /accounts, /orders, /help, /fast, /auto, /sp_on, /sp_off, etc.
 - ✅ Button clicks (inline keyboards) now respond immediately
+- ✅ **PRODUCTION READY**: Webhook auto-configures from TELEGRAM_WEBHOOK_URL env var on startup
+- ✅ Bot verified working on Reserved VM with production webhook
 
 # External Dependencies
 
