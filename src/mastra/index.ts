@@ -233,7 +233,84 @@ export const mastra = new Mastra({
               
               console.log("🔍 [TELEGRAM WEBHOOK RECEIVED]", JSON.stringify(payload, null, 2));
               logger?.info("🔍 [Telegram] Full payload received", JSON.stringify(payload, null, 2));
-              // Ignore callback queries - only process text messages
+              
+              // Handle button clicks (callback_query)
+              if (payload.callback_query) {
+                const callbackData = payload.callback_query.data;
+                const callbackQueryId = payload.callback_query.id;
+                const userId = String(payload.callback_query.from.id);
+                const chatId = payload.callback_query.message?.chat?.id || payload.callback_query.from.id;
+                
+                // Check authorization
+                if (!ALLOWED_USERS.includes(userId)) {
+                  console.log(`🚫 UNAUTHORIZED CALLBACK: UserID ${userId}`);
+                  return c.text("OK", 200);
+                }
+                
+                console.log(`🔘 CALLBACK BUTTON CLICKED: "${callbackData}"`);
+                
+                // Acknowledge callback immediately
+                if (process.env.TELEGRAM_BOT_TOKEN) {
+                  const botToken = process.env.TELEGRAM_BOT_TOKEN;
+                  const answerUrl = `https://api.telegram.org/bot${botToken}/answerCallbackQuery`;
+                  await fetch(answerUrl, {
+                    method: "POST",
+                    headers: { "Content-Type": "application/json" },
+                    body: JSON.stringify({
+                      callback_query_id: callbackQueryId,
+                      text: "✓",
+                      show_alert: false
+                    }),
+                  }).catch(err => console.log("⚠️ Error answering callback:", err));
+                }
+                
+                // Generate response based on callback data
+                const response = await parseAndExecuteCommand(callbackData, userId, mastra);
+                console.log(`✅ Generated callback response (${response.length} chars)`);
+                
+                // Send response via sendMessage (safe for all cases)
+                if (process.env.TELEGRAM_BOT_TOKEN) {
+                  const botToken = process.env.TELEGRAM_BOT_TOKEN;
+                  const sendUrl = `https://api.telegram.org/bot${botToken}/sendMessage`;
+                  
+                  let sendPayload: any = {
+                    chat_id: chatId,
+                    text: response,
+                  };
+                  
+                  try {
+                    const parsedResponse = JSON.parse(response);
+                    
+                    if (parsedResponse.type === "keyboard_menu" && parsedResponse.keyboard) {
+                      sendPayload.text = parsedResponse.text;
+                      sendPayload.reply_markup = {
+                        keyboard: parsedResponse.keyboard,
+                        resize_keyboard: true,
+                        one_time_keyboard: false
+                      };
+                      sendPayload.parse_mode = "Markdown";
+                    } else if (parsedResponse.type === "menu" && parsedResponse.keyboard) {
+                      sendPayload.text = parsedResponse.text;
+                      sendPayload.reply_markup = {
+                        inline_keyboard: parsedResponse.keyboard
+                      };
+                      // NO parse_mode with inline_keyboard
+                    }
+                  } catch (e) {
+                    // Plain text response
+                  }
+                  
+                  await fetch(sendUrl, {
+                    method: "POST",
+                    headers: { "Content-Type": "application/json" },
+                    body: JSON.stringify(sendPayload),
+                  }).catch(err => console.log("⚠️ Error sending callback response:", err));
+                }
+                
+                return c.text("OK", 200);
+              }
+              
+              // Only process text messages
               if (!payload.message) {
                 return c.text("OK", 200);
               }

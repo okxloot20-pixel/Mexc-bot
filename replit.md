@@ -57,10 +57,12 @@ A `telegramTradingWorkflow` orchestrates the trading pipeline, handling signal r
 - ✅ Hysteresis prevents re-entry until spread < 7%
 - ✅ Database schema updated with spread_monitoring_enabled flag and spread_monitoring_state table
 - ⚠️ Removed unstable DEBUG commands that interfered with message processing
-- ⚠️ Removed experimental callback_query handling that caused logging breaks
-- ✅ Bot restored to STABLE state: text commands only, no button callbacks
+- ✅ **CRITICAL FIX:** Webhook URL was pointing to Inngest instead of Mastra endpoint
+- ✅ Fixed webhook URL to: `https://e78e0794-a7b9-4eb7-91fc-56aa86108949-00-7aa5pyjb3lka.worf.replit.dev/webhooks/telegram/action`
+- ✅ Restored callback_query (button click) handling without conflicts
+- ✅ Bot fully STABLE: All text commands work + Button menus work
 - ✅ All trading commands work: /start, /balance, /positions, /accounts, /orders, /help, /fast, /auto, /sp_on, /sp_off, etc.
-- ✅ Webhook endpoint `/webhooks/telegram/action` handles messages reliably
+- ✅ Button clicks (inline keyboards) now respond immediately
 
 # External Dependencies
 
