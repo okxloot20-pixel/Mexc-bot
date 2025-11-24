@@ -14,6 +14,7 @@ import { inngest, inngestServe } from "./inngest";
 import { telegramTradingWorkflow } from "./workflows/telegramTradingWorkflow";
 import { mexcTradingAgent, parseAndExecuteCommand } from "./agents/mexcTradingAgent";
 import { registerTelegramTrigger } from "../triggers/telegramTriggers";
+import { startSpreadMonitoring } from "./workflows/spreadMonitoringWorkflow";
 import { eq, and } from "drizzle-orm";
 
 class ProductionPinoLogger extends MastraLogger {
@@ -658,6 +659,13 @@ async function clearTelegramCommands() {
 
 // Clear commands on startup
 clearTelegramCommands();
+
+// Start spread monitoring background job
+setTimeout(() => {
+  startSpreadMonitoring(mastra).catch((error: any) => {
+    mastra.getLogger()?.error("❌ Failed to start spread monitoring:", error);
+  });
+}, 2000);
 
 /*  Sanity check 1: Throw an error if there are more than 1 workflows.  */
 // !!!!!! Do not remove this check. !!!!!!

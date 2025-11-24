@@ -71,7 +71,7 @@ export const fastCommands = pgTable("fast_commands", {
 /**
  * Auto Commands Table
  * Stores user-defined auto commands list (stored as JSON array)
- * Format: [{"symbol": "WOJAKONX", "dex": "fdry5i5kuadz1ik8gps26qjj9rw9mpufxmeggc2hnsp7"}]
+ * Format: [{"symbol": "WOJAKONX", "dexPairId": "fdry5i5kuadz1ik8gps26qjj9rw9mpufxmeggc2hnsp7"}]
  */
 export const autoCommands = pgTable("auto_commands", {
   id: serial("id").primaryKey(),
@@ -79,8 +79,41 @@ export const autoCommands = pgTable("auto_commands", {
   // User identification
   telegramUserId: varchar("telegram_user_id", { length: 255 }).notNull().unique(),
   
-  // Auto commands list (JSON array of {symbol, dex} objects)
+  // Auto commands list (JSON array of {symbol, dexPairId} objects)
   commands: varchar("commands", { length: 5000 }).notNull().default("[]"),
+  
+  // Spread monitoring enabled for this user
+  spreadMonitoringEnabled: boolean("spread_monitoring_enabled").default(false),
+  
+  // Timestamps
+  createdAt: timestamp("created_at").defaultNow().notNull(),
+  updatedAt: timestamp("updated_at").defaultNow().notNull(),
+});
+
+/**
+ * Spread Monitoring State Table
+ * Tracks hysteresis state for spread-based SHORT entries
+ * Stores which symbols are in "cool-down" mode (spread < 7%) and don't allow new entries yet
+ */
+export const spreadMonitoringState = pgTable("spread_monitoring_state", {
+  id: serial("id").primaryKey(),
+  
+  // User identification
+  telegramUserId: varchar("telegram_user_id", { length: 255 }).notNull(),
+  
+  // Symbol being monitored
+  symbol: varchar("symbol", { length: 50 }).notNull(),
+  
+  // Hysteresis state: was_triggered = true means spread >= 13% occurred, now waiting for < 7%
+  wasTriggered: boolean("was_triggered").default(false),
+  
+  // Last know price and spread for logging
+  lastMexcPrice: varchar("last_mexc_price", { length: 100 }),
+  lastDexPrice: varchar("last_dex_price", { length: 100 }),
+  lastSpreadPercent: varchar("last_spread_percent", { length: 100 }),
+  
+  // Last action timestamp
+  lastActionAt: timestamp("last_action_at"),
   
   // Timestamps
   createdAt: timestamp("created_at").defaultNow().notNull(),
@@ -95,3 +128,5 @@ export type FastCommand = typeof fastCommands.$inferSelect;
 export type NewFastCommand = typeof fastCommands.$inferInsert;
 export type AutoCommand = typeof autoCommands.$inferSelect;
 export type NewAutoCommand = typeof autoCommands.$inferInsert;
+export type SpreadMonitoringState = typeof spreadMonitoringState.$inferSelect;
+export type NewSpreadMonitoringState = typeof spreadMonitoringState.$inferInsert;

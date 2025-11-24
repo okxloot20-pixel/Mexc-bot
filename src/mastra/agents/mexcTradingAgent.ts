@@ -1044,6 +1044,55 @@ U_ID: ${uId.substring(0, 30)}...
     return parseAndExecuteCommand("/fast", userId, mastra);
   }
   
+  // Spread monitoring - enable/disable
+  if (cmd === "/spread_on") {
+    const logger = globalMastra?.getLogger();
+    try {
+      const existing = await db.query.autoCommands.findFirst({
+        where: eq(autoCommands.telegramUserId, userId),
+      });
+      
+      if (!existing) {
+        return `❌ Нет сохранённых команд автотрейдинга. Сначала добавь монету через /auto add`;
+      }
+      
+      await db.update(autoCommands)
+        .set({ spreadMonitoringEnabled: true, updatedAt: new Date() })
+        .where(eq(autoCommands.telegramUserId, userId));
+      
+      logger?.info("✅ [SPREAD] Monitoring enabled for user:", userId);
+      return `✅ *Мониторинг спреда включен*
+
+Бот будет автоматически отслеживать монеты из /auto и открывать SHORT когда спред >= 13% и MEXC > DEX.
+
+Закрытие SHORT: автоматически при спреде < 2%`;
+    } catch (error: any) {
+      return `❌ Ошибка: ${error.message}`;
+    }
+  }
+  
+  if (cmd === "/spread_off") {
+    const logger = globalMastra?.getLogger();
+    try {
+      const existing = await db.query.autoCommands.findFirst({
+        where: eq(autoCommands.telegramUserId, userId),
+      });
+      
+      if (!existing) {
+        return `❌ Мониторинг спреда не включен`;
+      }
+      
+      await db.update(autoCommands)
+        .set({ spreadMonitoringEnabled: false, updatedAt: new Date() })
+        .where(eq(autoCommands.telegramUserId, userId));
+      
+      logger?.info("❌ [SPREAD] Monitoring disabled for user:", userId);
+      return `❌ *Мониторинг спреда выключен*`;
+    } catch (error: any) {
+      return `❌ Ошибка: ${error.message}`;
+    }
+  }
+  
   // Handle auto commands - /auto command to show saved auto commands
   if (cmd === "/auto" || cmd === "⚙️ auto") {
     const logger = globalMastra?.getLogger();

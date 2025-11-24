@@ -1,6 +1,6 @@
 # Overview
 
-This project is a Telegram trading bot for MEXC futures trading, built with Mastra. It allows users to execute trades on MEXC via Telegram commands, providing real-time responses and supporting multiple accounts. The bot aims to offer instant, reliable cryptocurrency trading directly from a chat interface.
+This project is a Telegram trading bot for MEXC futures trading, built with Mastra. It allows users to execute trades on MEXC via Telegram commands, providing real-time responses and supporting multiple accounts. The bot includes automatic spread-based SHORT trading that monitors price differences between MEXC futures and DEX markets. The bot aims to offer instant, reliable cryptocurrency trading directly from a chat interface.
 
 # User Preferences
 
@@ -28,6 +28,16 @@ PostgreSQL with the `pgvector` extension is used for data storage, managed by Dr
 
 A custom Pino logger provides structured, high-performance logging with configurable levels and ISO timestamps, essential for debugging and monitoring in a production environment.
 
+## Spread-Based Automated SHORT Trading
+
+Background monitoring module automatically tracks coins from `/auto` list and executes shorts when MEXC/DEX spread >= 13%. Key features:
+- **Entry**: Automatic SHORT market order when spread >= 13% AND mexcPrice > dexPrice
+- **Exit**: Automatic close via /closebs when spread < 2%
+- **Hysteresis**: Prevents re-entry until spread drops < 7% (gisterzesis prevents false signals)
+- **Commands**: `/spread_on` enables, `/spread_off` disables, `/auto add SYMBOL dexPairId` configures
+- **Monitoring interval**: 15 seconds per iteration
+- **Notifications**: Auto-sends Telegram messages when trades are executed
+
 ## Agent Architecture
 
 The `mexcTradingAgent` interprets Telegram trading signals, executes trades via the MEXC API using a "tools over hardcoded logic" approach, and maintains context with memory. It supports multiple LLM providers (OpenAI, OpenRouter) for flexibility in reasoning and model selection.
@@ -35,6 +45,17 @@ The `mexcTradingAgent` interprets Telegram trading signals, executes trades via 
 ## Workflow Design
 
 A `telegramTradingWorkflow` orchestrates the trading pipeline, handling signal reception, validation, trade execution, and confirmation. It utilizes Inngest's branching, parallel execution, and error handling features for robust control flow.
+
+## Recent Changes (November 24, 2025)
+
+- ✅ Added "🔄 Авто" button to reply_keyboard (main menu structure)
+- ✅ Implemented spread monitoring service with hysteresis logic
+- ✅ Added /spread_on and /spread_off commands for monitoring control
+- ✅ Background monitoring job runs every 15 seconds checking configured symbols
+- ✅ Auto SHORT entries when spread >= 13% AND mexcPrice > dexPrice
+- ✅ Auto SHORT exits when spread < 2%
+- ✅ Hysteresis prevents re-entry until spread < 7%
+- ✅ Database schema updated with spread_monitoring_enabled flag and spread_monitoring_state table
 
 # External Dependencies
 
