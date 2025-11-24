@@ -1093,6 +1093,81 @@ U_ID: ${uId.substring(0, 30)}...
     }
   }
   
+  // DEBUG: Test spread entry logic
+  if (cmd.startsWith("/spread_test ")) {
+    const symbol = message.split(/\s+/)[1]?.toUpperCase();
+    
+    if (!symbol) {
+      return `❌ Укажи символ: /spread_test SYMBOL\n\nПример: /spread_test WOJAKONX`;
+    }
+    
+    try {
+      const { testSpreadEntry } = await import("../services/spreadMonitoringService");
+      const logger = globalMastra?.getLogger();
+      
+      const result = await testSpreadEntry(
+        userId,
+        symbol,
+        async (uid: string) => {
+          const result = await executeToolDirect(getPositionsTool, { telegramUserId: uid });
+          try {
+            const parsed = JSON.parse(result);
+            return parsed.positions || [];
+          } catch {
+            return [];
+          }
+        },
+        async (uid: string) => {
+          const result = await executeToolDirect(getOrdersTool, { telegramUserId: uid });
+          try {
+            const parsed = JSON.parse(result);
+            return parsed.orders || [];
+          } catch {
+            return [];
+          }
+        },
+        logger
+      );
+      
+      return result;
+    } catch (error: any) {
+      return `❌ Ошибка при тестировании: ${error.message}`;
+    }
+  }
+  
+  // DEBUG: Test spread exit logic
+  if (cmd.startsWith("/spread_test_close ")) {
+    const symbol = message.split(/\s+/)[1]?.toUpperCase();
+    
+    if (!symbol) {
+      return `❌ Укажи символ: /spread_test_close SYMBOL\n\nПример: /spread_test_close WOJAKONX`;
+    }
+    
+    try {
+      const { testSpreadExit } = await import("../services/spreadMonitoringService");
+      const logger = globalMastra?.getLogger();
+      
+      const result = await testSpreadExit(
+        userId,
+        symbol,
+        async (uid: string) => {
+          const result = await executeToolDirect(getPositionsTool, { telegramUserId: uid });
+          try {
+            const parsed = JSON.parse(result);
+            return parsed.positions || [];
+          } catch {
+            return [];
+          }
+        },
+        logger
+      );
+      
+      return result;
+    } catch (error: any) {
+      return `❌ Ошибка при тестировании: ${error.message}`;
+    }
+  }
+  
   // Handle auto commands - /auto command to show saved auto commands
   if (cmd === "/auto" || cmd === "⚙️ auto") {
     const logger = globalMastra?.getLogger();

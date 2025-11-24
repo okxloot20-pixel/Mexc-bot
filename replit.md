@@ -56,6 +56,11 @@ A `telegramTradingWorkflow` orchestrates the trading pipeline, handling signal r
 - ✅ Auto SHORT exits when spread < 2%
 - ✅ Hysteresis prevents re-entry until spread < 7%
 - ✅ Database schema updated with spread_monitoring_enabled flag and spread_monitoring_state table
+- ✅ **NEW DEBUG FEATURES:**
+  - `/spread_test SYMBOL` - Emulates 15% spread to test entry logic (shows decision-making)
+  - `/spread_test_close SYMBOL` - Emulates 1.5% spread to test exit logic
+  - Background cycle now outputs detailed logs: mexcPrice, dexPrice, spreadPercent, decision (enter/hold/wait reset/close/skip), autoPosition flag, wasTriggered state
+  - DEBUG commands do NOT affect production logic - fully isolated and separate
 
 # External Dependencies
 

@@ -123,6 +123,151 @@ async function updateState(
 }
 
 /**
+ * TEST FUNCTION: Simulate spread entry scenario
+ */
+export async function testSpreadEntry(
+  userId: string,
+  symbol: string,
+  positionsFetcher: (userId: string) => Promise<any[]>,
+  ordersFetcher: (userId: string) => Promise<any[]>,
+  logger: any
+): Promise<string> {
+  try {
+    // Get user's auto commands
+    const autoCmd = await db.query.autoCommands.findFirst({
+      where: eq(autoCommands.telegramUserId, userId),
+    });
+    
+    if (!autoCmd) {
+      return `❌ Нет сохранённых команд автотрейдинга`;
+    }
+    
+    const commands: AutoCommand[] = JSON.parse(autoCmd.commands || "[]");
+    const cmd = commands.find(c => c.symbol === symbol.toUpperCase());
+    
+    if (!cmd) {
+      return `❌ Монета ${symbol} не найдена в /auto`;
+    }
+    
+    // Simulate entry conditions
+    const testMexcPrice = 100; // Mock price
+    const testDexPrice = 86.9; // Creates 15% spread
+    const testSpread = calculateSpread(testMexcPrice, testDexPrice);
+    const isPositiveSpreading = testMexcPrice > testDexPrice;
+    
+    // Get state
+    const state = await getOrCreateState(userId, symbol.toUpperCase());
+    
+    let result = `🔬 *DEBUG TEST: Spread Entry для ${symbol}*\n\n`;
+    result += `📊 Тестовые цены:\n`;
+    result += `• MEXC: ${testMexcPrice} USDT\n`;
+    result += `• DEX: ${testDexPrice} USDT\n`;
+    result += `• Спред: ${testSpread.toFixed(2)}%\n`;
+    result += `• MEXC > DEX: ${isPositiveSpreading ? '✅ ДА' : '❌ НЕТ'}\n\n`;
+    
+    // Check decision logic
+    result += `📋 *Анализ решения:*\n`;
+    result += `• Спред >= 13%: ${testSpread >= ENTRY_SPREAD ? '✅ ДА' : '❌ НЕТ'}\n`;
+    result += `• MEXC > DEX: ${isPositiveSpreading ? '✅ ДА' : '❌ НЕТ'}\n`;
+    result += `• wasTriggered=false: ${!state.wasTriggered ? '✅ ДА' : '❌ НЕТ'}\n\n`;
+    
+    // Check open position
+    const hasOpen = await hasOpenPositionOrOrder(userId, symbol.toUpperCase(), positionsFetcher, ordersFetcher);
+    result += `• Нет открытой позиции: ${!hasOpen ? '✅ ДА' : '❌ НЕТ'}\n\n`;
+    
+    // Final decision
+    const shouldEnter = (
+      testSpread >= ENTRY_SPREAD &&
+      isPositiveSpreading &&
+      !state.wasTriggered &&
+      !hasOpen
+    );
+    
+    result += `⚡ *РЕШЕНИЕ:* ${shouldEnter ? '✅ ОТКРЫТЬ SHORT' : '❌ НЕ ОТКРЫВАТЬ'}\n`;
+    
+    if (shouldEnter) {
+      result += `\n💡 В реальном цикле здесь была бы команда:\n\`/sm ${symbol}\`\n`;
+      result += `📬 И отправлено уведомление в Telegram`;
+    }
+    
+    logger?.info(`🔬 [SPREAD TEST ENTRY] ${symbol}: shouldEnter=${shouldEnter}, spread=${testSpread.toFixed(2)}%`);
+    
+    return result;
+  } catch (error: any) {
+    logger?.error("❌ [SPREAD TEST ENTRY] Error:", error);
+    return `❌ Ошибка при тестировании: ${error.message}`;
+  }
+}
+
+/**
+ * TEST FUNCTION: Simulate spread exit scenario
+ */
+export async function testSpreadExit(
+  userId: string,
+  symbol: string,
+  positionsFetcher: (userId: string) => Promise<any[]>,
+  logger: any
+): Promise<string> {
+  try {
+    // Get state
+    const state = await getOrCreateState(userId, symbol.toUpperCase());
+    
+    // Simulate exit conditions
+    const testMexcPrice = 100;
+    const testDexPrice = 101.5; // Creates 1.5% spread
+    const testSpread = calculateSpread(testMexcPrice, testDexPrice);
+    
+    // Check open position
+    const positions = await positionsFetcher(userId);
+    const hasShortPosition = positions.some(p => 
+      p.symbol === symbol.toUpperCase() && p.direction === "SHORT" && p.quantity > 0
+    );
+    
+    let result = `🔬 *DEBUG TEST: Spread Exit для ${symbol}*\n\n`;
+    result += `📊 Тестовые цены:\n`;
+    result += `• MEXC: ${testMexcPrice} USDT\n`;
+    result += `• DEX: ${testDexPrice} USDT\n`;
+    result += `• Спред: ${testSpread.toFixed(2)}%\n\n`;
+    
+    result += `📋 *Анализ решения:*\n`;
+    result += `• wasTriggered=true: ${state.wasTriggered ? '✅ ДА' : '❌ НЕТ'}\n`;
+    result += `• Спред < 2%: ${testSpread < EXIT_SPREAD ? '✅ ДА' : '❌ НЕТ'}\n`;
+    result += `• Есть SHORT позиция: ${hasShortPosition ? '✅ ДА' : '❌ НЕТ'}\n\n`;
+    
+    // Final decision
+    const shouldClose = (
+      state.wasTriggered &&
+      testSpread < EXIT_SPREAD &&
+      hasShortPosition
+    );
+    
+    result += `⚡ *РЕШЕНИЕ:* ${shouldClose ? '✅ ЗАКРЫТЬ SHORT' : '❌ НЕ ЗАКРЫВАТЬ'}\n`;
+    
+    if (shouldClose) {
+      result += `\n💡 В реальном цикле здесь была бы команда:\n\`/closebs ${symbol}\`\n`;
+      result += `📬 И отправлено уведомление в Telegram`;
+    } else {
+      if (!state.wasTriggered) {
+        result += `\n⚠️ Причина: позиция не была открыта авто-модулем (wasTriggered=false)`;
+      }
+      if (testSpread >= EXIT_SPREAD) {
+        result += `\n⚠️ Причина: спред еще >= 2% (${testSpread.toFixed(2)}%)`;
+      }
+      if (!hasShortPosition) {
+        result += `\n⚠️ Причина: нет открытой SHORT позиции`;
+      }
+    }
+    
+    logger?.info(`🔬 [SPREAD TEST EXIT] ${symbol}: shouldClose=${shouldClose}, spread=${testSpread.toFixed(2)}%`);
+    
+    return result;
+  } catch (error: any) {
+    logger?.error("❌ [SPREAD TEST EXIT] Error:", error);
+    return `❌ Ошибка при тестировании: ${error.message}`;
+  }
+}
+
+/**
  * Main spread monitoring logic
  */
 export async function checkAndExecuteSpreadTrades(
@@ -168,10 +313,32 @@ export async function checkAndExecuteSpreadTrades(
         const spreadPercent = calculateSpread(mexcPrice, dexPrice);
         const isPositiveSpreading = mexcPrice > dexPrice; // MEXC > DEX means SHORT opportunity
         
-        logger?.info(`📊 [SPREAD] ${symbol}: MEXC=${mexcPrice}, DEX=${dexPrice}, Spread=${spreadPercent.toFixed(2)}%, Positive=${isPositiveSpreading}`);
-        
-        // Get current state
+        // Get current state for decision logging
         const state = await getOrCreateState(userId, symbol);
+        
+        // Determine decision
+        let decision = "hold";
+        if (spreadPercent >= ENTRY_SPREAD && isPositiveSpreading && !state.wasTriggered) {
+          decision = "enter";
+        } else if (state.wasTriggered && spreadPercent < RESET_SPREAD) {
+          decision = "wait reset";
+        } else if (state.wasTriggered && spreadPercent < EXIT_SPREAD) {
+          decision = "close";
+        } else if (state.wasTriggered) {
+          decision = "hold";
+        } else {
+          decision = "skip";
+        }
+        
+        // Check if this is an auto-position
+        const positions = await positionsFetcher(userId);
+        const isAutoPosition = positions.some(p => 
+          p.symbol === symbol && p.direction === "SHORT" && p.quantity > 0
+        ) && state.wasTriggered;
+        
+        logger?.info(`📊 [SPREAD] ${symbol}:
+    mexcPrice=${mexcPrice.toFixed(8)}, dexPrice=${dexPrice.toFixed(8)}, spreadPercent=${spreadPercent.toFixed(2)}%
+    decision="${decision}", autoPosition=${isAutoPosition}, wasTriggered=${state.wasTriggered}`);
         
         // ENTRY LOGIC: spreadPercent >= 13% && mexcPrice > dexPrice && !wasTriggered
         if (
