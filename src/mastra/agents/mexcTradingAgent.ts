@@ -631,8 +631,8 @@ U_ID: ${uId.substring(0, 30)}...
           callback_data: `toggle_account_${acc.id}`
         });
         
-        // 2 buttons per row for better layout
-        if (currentRow.length === 2) {
+        // 4 buttons per row
+        if (currentRow.length === 4) {
           keyboard.push(currentRow);
           currentRow = [];
         }

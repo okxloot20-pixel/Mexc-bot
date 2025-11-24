@@ -78,7 +78,7 @@ The bot uses **direct command parsing** with **real MEXC API calls**:
   - Status indicators: 🟢 (active) / ❌ (inactive) for each account
   - Toggle account active/inactive by clicking button
   - Delete button with confirmation menu (list of accounts to delete)
-  - Compact layout: 2 buttons per row for proper Telegram display
+  - Compact layout: 4 buttons per row (`🟢 #474 | ❌ #466 | 🟢 #473 | 🟢 #472`)
   - Callback_query support for button interactions
 
 ## Durable Execution with Inngest
