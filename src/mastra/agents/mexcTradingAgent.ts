@@ -543,7 +543,10 @@ export async function parseAndExecuteCommand(message: string, userId: string, ma
           { text: "⚡ Fast", callback_data: "fast" }
         ],
         [
-          { text: "🚨 Сигналы", callback_data: "signals" },
+          { text: "🤖 Auto", callback_data: "auto" },
+          { text: "🚨 Сигналы", callback_data: "signals" }
+        ],
+        [
           { text: "⚙️ Настройки", callback_data: "settings" }
         ]
       ]
