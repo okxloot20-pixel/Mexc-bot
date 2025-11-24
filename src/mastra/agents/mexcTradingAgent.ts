@@ -526,24 +526,24 @@ export async function parseAndExecuteCommand(message: string, userId: string, ma
 /co SYMBOL - закрыть все лимитные ордера, которые не исполнились вообще либо заполнились частично, открытые позиции затронуты не будут`;
 
     return JSON.stringify({
-      type: "menu",
+      type: "keyboard_menu",
       text: helpText,
       keyboard: [
         [
-          { text: "🚀 Начало", callback_data: "start" },
-          { text: "📊 Позиции", callback_data: "positions" }
+          { text: "🚀 Начало" },
+          { text: "📊 Позиции" }
         ],
         [
-          { text: "👤 Аккаунт", callback_data: "account" },
-          { text: "📦 Ордеры", callback_data: "orders" }
+          { text: "👤 Аккаунт" },
+          { text: "📦 Ордеры" }
         ],
         [
-          { text: "💰 Баланс", callback_data: "balance" },
-          { text: "⚡ Fast", callback_data: "fast" }
+          { text: "💰 Баланс" },
+          { text: "⚡ Fast" }
         ],
         [
-          { text: "🚨 Сигналы", callback_data: "signals" },
-          { text: "⚙️ Настройки", callback_data: "settings" }
+          { text: "🚨 Сигналы" },
+          { text: "⚙️ Настройки" }
         ]
       ]
     });
