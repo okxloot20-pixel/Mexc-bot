@@ -478,6 +478,44 @@ export const mastra = new Mastra({
         }),
 });
 
+// Set Telegram webhook to production URL
+async function setTelegramWebhook() {
+  const botToken = process.env.TELEGRAM_BOT_TOKEN;
+  const webhookUrl = process.env.TELEGRAM_WEBHOOK_URL;
+  
+  if (!botToken) {
+    console.log("⚠️ TELEGRAM_BOT_TOKEN not set, skipping webhook setup");
+    return;
+  }
+  
+  if (!webhookUrl) {
+    console.log("⚠️ TELEGRAM_WEBHOOK_URL not set, skipping webhook setup");
+    return;
+  }
+  
+  try {
+    console.log(`🔗 Setting Telegram webhook to: ${webhookUrl}`);
+    const response = await fetch(`https://api.telegram.org/bot${botToken}/setWebhook`, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ 
+        url: webhookUrl,
+        drop_pending_updates: false
+      }),
+    });
+    
+    const data = await response.json();
+    
+    if (data.ok) {
+      console.log("✅ Telegram webhook set successfully!");
+    } else {
+      console.log("❌ Failed to set Telegram webhook:", data.description);
+    }
+  } catch (error: any) {
+    console.log("⚠️ Error setting Telegram webhook:", error.message);
+  }
+}
+
 // Clear Telegram bot commands to remove autocomplete suggestions
 async function clearTelegramCommands() {
   const botToken = process.env.TELEGRAM_BOT_TOKEN;
@@ -500,8 +538,14 @@ async function clearTelegramCommands() {
   }
 }
 
-// Clear commands on startup
-clearTelegramCommands();
+// Setup Telegram on startup
+async function setupTelegram() {
+  await setTelegramWebhook();
+  await clearTelegramCommands();
+}
+
+// Setup Telegram on startup
+setupTelegram();
 
 // Start spread monitoring background job
 setTimeout(() => {
