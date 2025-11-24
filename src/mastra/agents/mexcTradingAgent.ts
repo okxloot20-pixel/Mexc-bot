@@ -615,21 +615,38 @@ U_ID: ${uId.substring(0, 30)}...
 Используйте /register для добавления`;
       }
       
-      let text = `📊 Ваши аккаунты\n\n`;
+      let text = `📊 Ваши аккаунты:\n\n`;
       const keyboard: any[][] = [];
+      let currentRow: any[] = [];
       
       accounts.forEach((acc, idx) => {
-        text += `${idx + 1}️⃣ Аккаунт #${acc.accountNumber}\n`;
-        text += `   U_ID: ${acc.uId.substring(0, 20)}...\n`;
+        text += `${acc.isActive ? "🟢" : "❌"} #${acc.accountNumber}\n`;
         if (acc.proxy) text += `   Прокси: ${acc.proxy}\n`;
         text += `   Рычаг: ${acc.defaultLeverage}x | Размер: ${acc.defaultSize}\n\n`;
         
-        // Add delete button for each account
-        keyboard.push([{
-          text: `🗑️ Удалить #${acc.accountNumber}`,
+        // Create button with status emoji and account number
+        const buttonText = `${acc.isActive ? "🟢" : "❌"} #${acc.accountNumber}`;
+        currentRow.push({
+          text: buttonText,
           callback_data: `delete_account_${acc.id}`
-        }]);
+        });
+        
+        // 3 buttons per row for compact display
+        if (currentRow.length === 3) {
+          keyboard.push(currentRow);
+          currentRow = [];
+        }
       });
+      
+      // Add remaining buttons
+      if (currentRow.length > 0) {
+        keyboard.push(currentRow);
+      }
+      
+      keyboard.push([{
+        text: "← Назад",
+        callback_data: "back_to_menu"
+      }]);
       
       return JSON.stringify({
         type: "menu",
@@ -676,6 +693,11 @@ U_ID: ${uId.substring(0, 30)}...
   // Show accounts again callback
   if (cmd === "accounts") {
     return parseAndExecuteCommand("/accounts", userId, mastra);
+  }
+  
+  // Back to menu callback
+  if (cmd === "back_to_menu") {
+    return parseAndExecuteCommand("/start", userId, mastra);
   }
   
   // Fast command - manage fast coins list

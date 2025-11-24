@@ -65,7 +65,7 @@ The bot uses **direct command parsing** with **real MEXC API calls**:
 - Real-time console logging for debugging
 - Graceful error handling
 
-**Setup verified** (November 22, 2025):
+**Setup verified** (November 24, 2025):
 - ✅ Webhook URL set in Telegram BotFather: `https://e78e0794-a7b9-4eb7-91fc-56aa86108949-00-7aa5pyjb3lka.worf.replit.dev/webhooks/telegram/action`
 - ✅ All 13+ commands responding with proper parameter parsing
 - ✅ Chat validation working
@@ -74,6 +74,7 @@ The bot uses **direct command parsing** with **real MEXC API calls**:
 - ✅ Real MEXC API integration using u_id from cookies (November 22, 2025)
 - ✅ Full support for all trading commands with optional parameters
 - ✅ u_id остаётся валиден и не истекает
+- ✅ **Fixed account display UI** (November 24, 2025) - Short button text (🟢 #465 or ❌ #466) with 3 buttons per row to prevent empty squares when many accounts
 
 ## Durable Execution with Inngest
 
