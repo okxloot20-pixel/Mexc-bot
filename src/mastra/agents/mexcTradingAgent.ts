@@ -1093,6 +1093,7 @@ U_ID: ${uId.substring(0, 30)}...
     }
   }
   
+  /* DISABLED: DEBUG commands temporarily commented out to restore stable bot operation
   // DEBUG: Test spread entry logic
   if (cmd.startsWith("/spread_test ")) {
     const symbol = message.split(/\s+/)[1]?.toUpperCase();
@@ -1167,6 +1168,7 @@ U_ID: ${uId.substring(0, 30)}...
       return `❌ Ошибка при тестировании: ${error.message}`;
     }
   }
+  */
   
   // Handle auto commands - /auto command to show saved auto commands
   if (cmd === "/auto" || cmd === "⚙️ auto") {
