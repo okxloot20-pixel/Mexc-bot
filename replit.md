@@ -295,14 +295,14 @@ Supports multiple LLM providers via Mastra's model router:
   - Add coin: `/auto add WOJAKONX fdry5i5kuadz1ik8gps26qjj9rw9mpufxmeggc2hnsp7`
   - Stores symbol + DEX address for reference
   - Click button to open SHORT position instantly
-- **Storage**: Stores coins with DEX addresses as JSON array in `auto_coins` table
+- **Storage**: Stores coins with DEX addresses as JSON array in `user_dex_coins` table
 - **Use case**: Track which DEX each coin is from, useful for research or future automation
 
 ### Differences Between Fast and Auto
 | Feature | Fast | Auto |
 |---------|------|------|
 | Data stored | Symbol only | Symbol + DEX address |
-| Table | `fast_commands` | `auto_coins` |
+| Table | `fast_commands` | `user_dex_coins` |
 | Use case | Quick trading | Tracking + reference |
 | Overlap | None | None |
 

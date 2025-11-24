@@ -72,11 +72,11 @@ export const fastCommands = pgTable("fast_commands", {
  * Auto Coins Table
  * Stores user-defined auto coins list (stored as JSON array with symbol and dex)
  */
-export const autoCoins = pgTable("auto_coins", {
+export const autoCoins = pgTable("user_dex_coins", {
   id: serial("id").primaryKey(),
   
   // User identification
-  telegramUserId: varchar("telegram_user_id", { length: 255 }).notNull().unique(),
+  telegramUserId: varchar("telegram_user_id", { length: 255 }).notNull(),
   
   // Coins list (JSON array of objects: [{symbol: "WOJAKONX", dex: "fdry5i5kuadz1ik8gps26qjj9rw9mpufxmeggc2hnsp7"}])
   coins: varchar("coins", { length: 3000 }).notNull().default("[]"),
