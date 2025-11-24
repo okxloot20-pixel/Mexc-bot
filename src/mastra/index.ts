@@ -470,11 +470,58 @@ export const mastra = new Mastra({
                   console.log(`📤 Full payload:`, JSON.stringify(editPayload, null, 2).substring(0, 300));
                   logger?.info("📤 [Telegram] Sending editMessageText", { chatId, messageId, hasReplyMarkup: !!editPayload.reply_markup });
                   
-                  await fetch(apiUrl, {
-                    method: "POST",
-                    headers: { "Content-Type": "application/json" },
-                    body: JSON.stringify(editPayload),
-                  });
+                  try {
+                    const editResponse = await fetch(apiUrl, {
+                      method: "POST",
+                      headers: { "Content-Type": "application/json" },
+                      body: JSON.stringify(editPayload),
+                    });
+                    const editResult = await editResponse.json();
+                    
+                    if (!editResult.ok) {
+                      console.log(`⚠️ editMessageText failed: ${editResult.description}`);
+                      console.log(`📋 Error response: ${JSON.stringify(editResult)}`);
+                      logger?.warn("⚠️ [Telegram] editMessageText failed", { error: editResult.description });
+                      
+                      // Fallback to sendMessage
+                      console.log(`🔄 Falling back to sendMessage...`);
+                      const sendPayload: any = {
+                        chat_id: chatId,
+                        text: editPayload.text
+                      };
+                      
+                      // Only add parse_mode if no keyboard
+                      if (!editPayload.reply_markup) {
+                        sendPayload.parse_mode = editPayload.parse_mode || "Markdown";
+                      }
+                      
+                      if (editPayload.reply_markup) {
+                        sendPayload.reply_markup = editPayload.reply_markup;
+                        console.log(`📱 Including reply_markup: ${JSON.stringify(editPayload.reply_markup).substring(0, 100)}`);
+                      }
+                      
+                      console.log(`📨 sendMessage payload:`, JSON.stringify(sendPayload).substring(0, 200));
+                      const sendApiUrl = `https://api.telegram.org/bot${botToken}/sendMessage`;
+                      const sendResponse = await fetch(sendApiUrl, {
+                        method: "POST",
+                        headers: { "Content-Type": "application/json" },
+                        body: JSON.stringify(sendPayload),
+                      });
+                      const sendResult = await sendResponse.json();
+                      if (sendResult.ok) {
+                        console.log(`✅ Sent via sendMessage fallback (message_id: ${sendResult.result.message_id})`);
+                        logger?.info("✅ [Telegram] Sent via sendMessage fallback");
+                      } else {
+                        console.log(`❌ sendMessage also failed: ${sendResult.description}`);
+                        logger?.error("❌ [Telegram] sendMessage fallback failed", { error: sendResult.description });
+                      }
+                    } else {
+                      console.log(`✅ editMessageText sent successfully`);
+                    }
+                  } catch (error: any) {
+                    console.log(`❌ Error sending editMessageText: ${error.message}`);
+                    logger?.error("❌ [Telegram] Error sending editMessageText", { error: error.message });
+                  }
                 }
                 
                 return c.text("OK", 200);
