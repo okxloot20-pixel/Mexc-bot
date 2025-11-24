@@ -659,3 +659,36 @@ if (Object.keys(mastra.getAgents()).length > 1) {
     "More than 1 agents found. Currently, more than 1 agents are not supported in the UI, since doing so will cause app state to be inconsistent.",
   );
 }
+
+// Graceful shutdown handler for Reserved VM stability
+// Handles SIGTERM and SIGINT signals to prevent unexpected crashes
+process.on("SIGTERM", async () => {
+  const logger = mastra.getLogger();
+  logger?.info("🛑 [System] Received SIGTERM signal, gracefully shutting down...");
+  process.exit(0);
+});
+
+process.on("SIGINT", async () => {
+  const logger = mastra.getLogger();
+  logger?.info("🛑 [System] Received SIGINT signal, gracefully shutting down...");
+  process.exit(0);
+});
+
+// Catch uncaught exceptions to prevent silent crashes
+process.on("uncaughtException", (error: Error) => {
+  const logger = mastra.getLogger();
+  logger?.error("💥 [System] Uncaught exception detected", {
+    message: error.message,
+    stack: error.stack,
+  });
+  process.exit(1);
+});
+
+// Catch unhandled promise rejections
+process.on("unhandledRejection", (reason: any, promise: Promise<any>) => {
+  const logger = mastra.getLogger();
+  logger?.error("💥 [System] Unhandled promise rejection", {
+    reason: String(reason),
+    promise: String(promise),
+  });
+});
