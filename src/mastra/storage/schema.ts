@@ -68,29 +68,9 @@ export const fastCommands = pgTable("fast_commands", {
   updatedAt: timestamp("updated_at").defaultNow().notNull(),
 });
 
-/**
- * Auto Coins Table
- * Stores user-defined auto coins list (stored as JSON array with symbol and dex)
- */
-export const autoCoins = pgTable("auto_coins", {
-  id: serial("id").primaryKey(),
-  
-  // User identification
-  telegramUserId: varchar("telegram_user_id", { length: 255 }).notNull().unique(),
-  
-  // Coins list (JSON array of objects: [{symbol: "WOJAKONX", dex: "fdry5i5kuadz1ik8gps26qjj9rw9mpufxmeggc2hnsp7"}])
-  coins: varchar("coins", { length: 3000 }).notNull().default("[]"),
-  
-  // Timestamps
-  createdAt: timestamp("created_at").defaultNow().notNull(),
-  updatedAt: timestamp("updated_at").defaultNow().notNull(),
-});
-
 export type MexcAccount = typeof mexcAccounts.$inferSelect;
 export type NewMexcAccount = typeof mexcAccounts.$inferInsert;
 export type SymbolLimit = typeof symbolLimits.$inferSelect;
 export type NewSymbolLimit = typeof symbolLimits.$inferInsert;
 export type FastCommand = typeof fastCommands.$inferSelect;
 export type NewFastCommand = typeof fastCommands.$inferInsert;
-export type AutoCoin = typeof autoCoins.$inferSelect;
-export type NewAutoCoin = typeof autoCoins.$inferInsert;
