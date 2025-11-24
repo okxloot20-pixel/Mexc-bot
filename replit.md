@@ -81,6 +81,7 @@ The bot uses **direct command parsing** with **real MEXC API calls**:
   - Compact layout: 4 buttons per row (`🟢 #474 | ❌ #466 | 🟢 #473 | 🟢 #472`)
   - Minimal interface - only header and buttons, no account details text
   - Callback_query support for button interactions
+  - Reply keyboard button "👤 Аккаунт" sends `/accounts` command ✅ ADDED - runs /accounts command
 
 **Bug Fixes (November 24, 2025):**
 - Fixed toggle account buttons not working - issue was webhook handler looking up by `accountNumber` instead of database `id`

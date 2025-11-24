@@ -1445,38 +1445,9 @@ U_ID: ${uId.substring(0, 30)}...
     return result;
   }
   
-  if (message === "👤 Аккаунт") {
-    try {
-      const accounts = await db.query.mexcAccounts.findMany({
-        where: eq(mexcAccounts.telegramUserId, userId),
-      });
-      
-      if (accounts.length === 0) {
-        return `📊 *Ваши аккаунты*
-
-Нет зарегистрированных аккаунтов.
-Используйте /register для добавления`;
-      }
-      
-      const buttons = accounts.map((acc) => {
-        const status = acc.isActive ? "✅" : "❌";
-        return {
-          text: `${status} ${acc.accountNumber}`,
-          callback_data: `toggle_account_${acc.id}`
-        };
-      });
-      
-      return JSON.stringify({
-        type: "menu",
-        text: "📝 Твои аккаунты MEXC\n\nНажимай на кнопку, чтобы включить / выключать аккаунт.\nВсе торговые команды выполняются на активных аккаунтах.",
-        keyboard: [
-          buttons,
-          [{ text: "← Назад", callback_data: "show_account_menu" }]
-        ]
-      });
-    } catch (error: any) {
-      return `❌ Ошибка при получении аккаунтов: ${error.message}`;
-    }
+  if (message === "👤 Аккаунт" || message === "/accounts") {
+    // Delegate to /accounts handler
+    return parseAndExecuteCommand("/accounts", userId, mastra);
   }
   
   // Handle back button from accounts menu - show keyboard menu instead
