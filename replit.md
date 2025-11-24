@@ -14,6 +14,8 @@ The application features:
 - ✅ Persistent workflow execution (Inngest)
 - ✅ **Inline keyboard buttons with callback_query support** - Account toggle/enable/disable
 - ✅ **Message editing on button clicks** - Real-time UI updates without spam
+- ✅ **Fast button** - Quick 1-click SHORT orders on saved coins
+- ✅ **Auto button** - Save coins with DEX addresses for automated trading
 
 # User Preferences
 
@@ -276,9 +278,38 @@ Supports multiple LLM providers via Mastra's model router:
 - **Purpose**: Execute TypeScript directly without build step
 - **Use Case**: Development and scripts
 
+## Quick Action Buttons
+
+### Fast Button (⚡)
+- **Purpose**: Quick 1-click SHORT orders on frequently traded coins
+- **How to use**: 
+  - Click "🤖 Auto" button in main menu
+  - Add coin: `/fast add ARTX`
+  - Click button to open SHORT position instantly
+- **Storage**: Stores coins as JSON array in `fast_commands` table
+
+### Auto Button (🤖) 
+- **Purpose**: Save coins with DEX addresses for automated trading
+- **How to use**:
+  - Click "🤖 Auto" button in main menu  
+  - Add coin: `/auto add WOJAKONX fdry5i5kuadz1ik8gps26qjj9rw9mpufxmeggc2hnsp7`
+  - Stores symbol + DEX address for reference
+  - Click button to open SHORT position instantly
+- **Storage**: Stores coins with DEX addresses as JSON array in `auto_coins` table
+- **Use case**: Track which DEX each coin is from, useful for research or future automation
+
+### Differences Between Fast and Auto
+| Feature | Fast | Auto |
+|---------|------|------|
+| Data stored | Symbol only | Symbol + DEX address |
+| Table | `fast_commands` | `auto_coins` |
+| Use case | Quick trading | Tracking + reference |
+| Overlap | None | None |
+
 ## Key Design Trade-offs
 
 1. **Inngest vs. Simple HTTP**: Chose Inngest for durability at the cost of additional dependency and configuration complexity
 2. **PostgreSQL vs. LibSQL**: PostgreSQL for production reliability; LibSQL for simpler local development
 3. **Mastra vs. LangChain**: Mastra provides tighter TypeScript integration and better workflow orchestration, but smaller ecosystem
 4. **Webhook triggers vs. Polling**: Webhooks for real-time response, but require public endpoints and webhook setup
+5. **Fast vs. Auto buttons**: Separate buttons for different use cases - Fast for pure trading, Auto for tracking with metadata

@@ -406,6 +406,11 @@ export const mastra = new Mastra({
                   // Handle fast command callbacks and menu navigation
                   console.log(`⚡ Fast callback: ${callbackData}`);
                   response = await parseAndExecuteCommand(callbackData, userId, mastra);
+                } else if (callbackData === "auto" || callbackData === "show_auto" || callbackData === "add_auto_coin" || callbackData === "delete_auto_menu" || callbackData === "show_auto_menu" ||
+                           callbackData.startsWith("auto_cmd_") || callbackData.startsWith("delete_auto_confirm_")) {
+                  // Handle auto command callbacks and menu navigation
+                  console.log(`🤖 Auto callback: ${callbackData}`);
+                  response = await parseAndExecuteCommand(callbackData, userId, mastra);
                 } else {
                   response = "📨 Неизвестная команда";
                 }
