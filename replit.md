@@ -56,10 +56,11 @@ A `telegramTradingWorkflow` orchestrates the trading pipeline, handling signal r
 - ✅ Auto SHORT exits when spread < 2%
 - ✅ Hysteresis prevents re-entry until spread < 7%
 - ✅ Database schema updated with spread_monitoring_enabled flag and spread_monitoring_state table
-- ✅ Removed unstable DEBUG commands that interfered with message processing
-- ✅ Fixed callback_query (button click) handling - was only processing text messages
-- ✅ Added support for both `keyboard_menu` (reply_keyboard) and `menu` (inline_keyboard) types in callbacks
-- ✅ Bot fully restored to stable operation with all normal commands and buttons working
+- ⚠️ Removed unstable DEBUG commands that interfered with message processing
+- ⚠️ Removed experimental callback_query handling that caused logging breaks
+- ✅ Bot restored to STABLE state: text commands only, no button callbacks
+- ✅ All trading commands work: /start, /balance, /positions, /accounts, /orders, /help, /fast, /auto, /sp_on, /sp_off, etc.
+- ✅ Webhook endpoint `/webhooks/telegram/action` handles messages reliably
 
 # External Dependencies
 

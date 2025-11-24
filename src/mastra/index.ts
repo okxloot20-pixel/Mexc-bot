@@ -233,11 +233,7 @@ export const mastra = new Mastra({
               
               console.log("🔍 [TELEGRAM WEBHOOK RECEIVED]", JSON.stringify(payload, null, 2));
               logger?.info("🔍 [Telegram] Full payload received", JSON.stringify(payload, null, 2));
-              logger?.info("🔍 [Telegram] Payload keys:", Object.keys(payload));
-              logger?.info("🔍 [Telegram] Has message?", !!payload.message);
-              logger?.info("🔍 [Telegram] Has callback_query?", !!payload.callback_query);
-              
-              // Only process message events
+              // Ignore callback queries - only process text messages
               if (!payload.message) {
                 return c.text("OK", 200);
               }
