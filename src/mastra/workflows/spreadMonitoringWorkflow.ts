@@ -26,9 +26,21 @@ export async function startSpreadMonitoring(mastra: any) {
   async function monitoringLoop() {
     try {
       // Get all users with spread monitoring enabled
-      const users = await db.query.autoCommands.findMany({
-        where: eq(autoCommands.spreadMonitoringEnabled, true) as any,
-      });
+      let users: any[] = [];
+      try {
+        if (db) {
+          users = await db.query.autoCommands.findMany({
+            where: eq(autoCommands.spreadMonitoringEnabled, true) as any,
+          });
+        }
+      } catch (dbError) {
+        logger?.error("❌ [SPREAD] Database error fetching users:", dbError);
+        // Reschedule next iteration even if DB fails
+        if (isMonitoring) {
+          monitoringHandle = setTimeout(monitoringLoop, MONITORING_INTERVAL);
+        }
+        return;
+      }
       
       for (const userAutoCmd of users) {
         const userId = userAutoCmd.telegramUserId;

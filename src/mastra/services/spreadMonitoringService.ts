@@ -71,29 +71,41 @@ async function getOrCreateState(
   userId: string,
   symbol: string
 ): Promise<any> {
-  let state = await db.query.spreadMonitoringState.findFirst({
-    where: and(
-      eq(spreadMonitoringState.telegramUserId, userId),
-      eq(spreadMonitoringState.symbol, symbol)
-    ),
-  });
-  
-  if (!state) {
-    await db.insert(spreadMonitoringState).values({
-      telegramUserId: userId,
-      symbol,
-      wasTriggered: false,
-    });
-    
-    state = await db.query.spreadMonitoringState.findFirst({
+  try {
+    if (!db) return null;
+
+    let state = await db.query.spreadMonitoringState.findFirst({
       where: and(
         eq(spreadMonitoringState.telegramUserId, userId),
         eq(spreadMonitoringState.symbol, symbol)
       ),
     });
+    
+    if (!state) {
+      try {
+        await db.insert(spreadMonitoringState).values({
+          telegramUserId: userId,
+          symbol,
+          wasTriggered: false,
+        });
+        
+        state = await db.query.spreadMonitoringState.findFirst({
+          where: and(
+            eq(spreadMonitoringState.telegramUserId, userId),
+            eq(spreadMonitoringState.symbol, symbol)
+          ),
+        });
+      } catch (insertError) {
+        console.error(`Error creating state for ${symbol}:`, insertError);
+        return null;
+      }
+    }
+    
+    return state;
+  } catch (error) {
+    console.error(`Error getting state for ${symbol}:`, error);
+    return null;
   }
-  
-  return state;
 }
 
 /**
@@ -107,19 +119,25 @@ async function updateState(
   dexPrice?: number,
   spreadPercent?: number
 ): Promise<void> {
-  await db.update(spreadMonitoringState)
-    .set({
-      wasTriggered,
-      lastMexcPrice: mexcPrice?.toString(),
-      lastDexPrice: dexPrice?.toString(),
-      lastSpreadPercent: spreadPercent?.toString(),
-      lastActionAt: new Date(),
-      updatedAt: new Date(),
-    })
-    .where(and(
-      eq(spreadMonitoringState.telegramUserId, userId),
-      eq(spreadMonitoringState.symbol, symbol)
-    ));
+  try {
+    if (!db) return;
+
+    await db.update(spreadMonitoringState)
+      .set({
+        wasTriggered,
+        lastMexcPrice: mexcPrice?.toString(),
+        lastDexPrice: dexPrice?.toString(),
+        lastSpreadPercent: spreadPercent?.toString(),
+        lastActionAt: new Date(),
+        updatedAt: new Date(),
+      })
+      .where(and(
+        eq(spreadMonitoringState.telegramUserId, userId),
+        eq(spreadMonitoringState.symbol, symbol)
+      ));
+  } catch (error) {
+    console.error(`Error updating state for ${symbol}:`, error);
+  }
 }
 
 /**
@@ -136,10 +154,22 @@ export async function checkAndExecuteSpreadTrades(
   logger: any
 ): Promise<void> {
   try {
+    // Safety check: db might not be initialized
+    if (!db) {
+      logger?.warn("⚠️ [SPREAD] Database not initialized, skipping spread monitoring");
+      return;
+    }
+
     // Get user's auto commands
-    const autoCmd = await db.query.autoCommands.findFirst({
-      where: eq(autoCommands.telegramUserId, userId),
-    });
+    let autoCmd;
+    try {
+      autoCmd = await db.query.autoCommands.findFirst({
+        where: eq(autoCommands.telegramUserId, userId),
+      });
+    } catch (dbError) {
+      logger?.error("❌ [SPREAD] Database error fetching auto commands:", dbError);
+      return;
+    }
     
     if (!autoCmd || !autoCmd.spreadMonitoringEnabled) {
       return;
